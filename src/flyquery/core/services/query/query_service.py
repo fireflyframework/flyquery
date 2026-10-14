@@ -626,9 +626,9 @@ class QueryService:
         """
         start_ms = time.monotonic_ns() // 1_000_000
 
-        if not scopes.intersection(
-            {"flyquery.query:read", "flyquery.sql:execute", "flyquery.derived:write", "*"}
-        ) or (dataset_allowlist is not None and str(dataset_id) not in dataset_allowlist):
+        if not scopes.intersection({"flyquery.query:read", "flyquery.sql:execute", "*"}) or (
+            dataset_allowlist is not None and str(dataset_id) not in dataset_allowlist
+        ):
             elapsed = (time.monotonic_ns() // 1_000_000) - start_ms
             # Retain caller-supplied denial evidence without attaching the
             # record to an unauthorized dataset or invoking retrieval/models.
