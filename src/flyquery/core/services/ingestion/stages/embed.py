@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -103,7 +104,7 @@ async def run_embed(
                 SELECT id, qualified_name, data_type, description, synonyms_json,
                        profile_json, sample_values_json
                 FROM flyquery_schema_objects
-                WHERE snapshot_id = :sid AND tenant_id = :tenant
+                WHERE snapshot_id = :sid AND tenant_id = :tenant AND is_active = true
                 ORDER BY kind, qualified_name
                 """
             ),
@@ -174,15 +175,17 @@ def _render_values(row: dict, *, max_chars: int = 300) -> str:
     PII safety: prefer the PII-gated ``sample_values_json`` -- the pii_tag
     stage wipes it to ``[]`` when a redact/reject policy fires, so an empty
     list here means "do not surface raw samples". When no gated samples are
-    present we fall back to ``profile_json.top_values``, the stored distinct
-    set for low-cardinality columns (aggregate / low-cardinality, so lower
-    PII risk). The result is capped to ``max_chars`` either way.
+    recorded we may use ``profile_json.top_values``. An explicitly empty
+    sample list blocks that fallback, including for low-cardinality data.
+    The result is capped to ``max_chars`` either way.
     """
     seen: set[str] = set()
     uniq: list[str] = []
 
     # Preferred source: PII-gated samples (empty list = intentionally wiped).
     samples = row.get("sample_values_json")
+    if samples == []:
+        return ""
     if isinstance(samples, list) and samples:
         for v in samples:
             if v is None:

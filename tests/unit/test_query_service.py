@@ -118,14 +118,14 @@ class _FakeMappingResult:
 
 
 class _TableAwareSession:
-    """Session whose table-kind lookup reports one TABLE so a realistic
+    """Session whose table-kind lookup reports one UPLOADED table so a realistic
     ``... FROM <name>`` query clears the scope + unknown-table guards."""
 
     def __init__(self, table_name: str):
         self._table_name = table_name
 
     async def execute(self, stmt, params=None):
-        return _FakeMappingResult([{"name": self._table_name, "kind": "TABLE"}])
+        return _FakeMappingResult([{"name": self._table_name, "kind": "UPLOADED"}])
 
 
 class _TableAwareResolver:
@@ -416,8 +416,9 @@ async def test_answer_retries_on_execution_error():
         scopes={"flyquery.query:read"},
     )
 
-    assert result.execution_status in ("REFINED_OK", "FAILED")
-    assert repo.created_queries[0]["retries"] >= 1
+    assert result.execution_status == "REFINED_OK"
+    assert repo.created_queries[0]["retries"] == 1
+    assert call_count[0] == 2
 
 
 @pytest.mark.asyncio
@@ -612,3 +613,42 @@ async def test_critic_cannot_replace_a_scoped_query_with_an_unregistered_native_
     )
     assert result.execution_status not in ("OK", "REFINED_OK")
     assert executor.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_rejected_advisory_sql_keeps_the_executed_query_and_result_together(tmp_path):
+    from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
+
+    file = tmp_path / "unregistered.csv"
+    file.write_text("evidence\nsynthetic-unregistered-file\n")
+
+    class Settings:
+        duckdb_memory_limit = "256MB"
+        default_row_cap = 100
+
+    repo = _FakeQueryRepo()
+    original_sql = "SELECT 7 AS value"
+    svc = _make_service(
+        candidates=_make_candidates(original_sql),
+        executor=DuckDBExecutor(Settings()),
+        query_repo=repo,
+        critic_agent=_FakeAgent(
+            RefinedSql(sql=f"SELECT * FROM read_csv_auto('{file}')", reasoning="fixture", confidence=0.8)
+        ),
+    )
+
+    async def advisory(*args):
+        return "Reconsider this synthetic result"
+
+    svc._advisory_repair = advisory
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="synthetic advisory",
+        scopes={"flyquery.query:read"},
+    )
+    assert result.execution_status == "OK"
+    assert result.sql == original_sql
+    assert result.preview == [{"value": 7}]
+    assert repo.created_queries[0]["executed_sql"] == original_sql

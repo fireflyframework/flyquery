@@ -39,7 +39,7 @@ def controller(tmp_path):
             pass
 
         async def execute(self, statement, params):
-            assert params == {"ds": dataset, "names": ["orders"]}
+            assert params == {"ds": dataset, "names": ["orders"], "pins": "{}"}
             return Rows()
 
     class TableRepository:

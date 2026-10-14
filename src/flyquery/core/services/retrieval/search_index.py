@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -118,10 +119,13 @@ def _schema_hit(r, score: float) -> Hit:
     kind = r.get("kind", None)
     semantic_type = _semantic_type(r["governance_json"]) if "governance_json" in r else None
     suffix = ""
+    samples = r.get("sample_values_json", None)
+    value_access = samples != []
+    profile = r.get("profile_json", None) if value_access else {}
     if kind == "COLUMN":
         suffix = _col_value_suffix(
-            r.get("profile_json", None),
-            r.get("sample_values_json", None),
+            profile,
+            samples,
             semantic_type,
         )
     text = f"{r['qualified_name']}: {r['data_type'] or ''}\n{r['description'] or ''}{suffix}"
@@ -136,8 +140,9 @@ def _schema_hit(r, score: float) -> Hit:
             "kind": kind,
             "data_type": r["data_type"],
             "semantic_type": semantic_type,
-            "profile_json": r.get("profile_json", None),
-            "sample_values_json": r.get("sample_values_json", None),
+            "profile_json": profile,
+            "sample_values_json": samples,
+            "value_access": value_access,
         },
     )
 
@@ -355,6 +360,7 @@ class SearchIndex:
                     "min": prof["min"],
                     "max": prof["max"],
                     "mixed_sign": prof["mixed_sign"],
+                    "value_access": r["sample_values_json"] != [],
                     "original_header": _original_header(r["governance_json"]),
                 }
             )

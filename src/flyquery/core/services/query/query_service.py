@@ -818,14 +818,14 @@ class QueryService:
                 and not value_anchoring.is_degenerate_sql(s)
             )
 
-        # round-2 #4: remember the best correct result so an ADVISORY repair can
-        # never replace a correct answer with a worse one.
+        # Retain an executed, nonempty result if a repair fails. Row count is
+        # an execution check; it does not establish semantic correctness.
         best_ok = (chosen_sql, result, ast) if _is_good(result, chosen_sql) else None
 
         # round-2 #5B/#7: when the result is already OK, an advisory check may still
         # ask the critic to reconsider (signed-measure double-subtraction; an IN-list
         # that under-covers a value group). It rides the non-destructive loop below,
-        # so it can only ever improve the answer or be ignored.
+        # and preserves the previous executed result when a proposal fails.
         adv_msg = None
         if _is_good(result, chosen_sql):
             adv_msg = await self._advisory_repair(chosen_sql, ast, col_catalog, question, dataset_id, bundle)
@@ -859,10 +859,10 @@ class QueryService:
                 break  # critic kept the SQL -> accept it as already correct
             if value_anchoring.is_degenerate_sql(new_sql):
                 break  # never adopt a placeholder; best_ok (if any) is restored below
-            chosen_sql = new_sql
-            run = await self._run_sql_once(chosen_sql, dataset_id, scopes, dataset_allowlist, bundle)
+            run = await self._run_sql_once(new_sql, dataset_id, scopes, dataset_allowlist, bundle)
             if run["status"] in ("scope", "firewall"):
                 break
+            chosen_sql = new_sql
             result = run["result"]
             ast = run["ast"]
             retries += 1
@@ -874,7 +874,7 @@ class QueryService:
             else:
                 adv_msg = None
 
-        # round-2 #4: if repair degraded a previously-correct answer, restore it.
+        # Restore the executed fallback when repair produces no usable result.
         if best_ok is not None and not _is_good(result, chosen_sql):
             chosen_sql, result, ast = best_ok
 

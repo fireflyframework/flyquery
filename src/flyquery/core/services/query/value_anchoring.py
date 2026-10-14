@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -109,8 +110,11 @@ def coerce_profile(
     low-cardinality column (drawn from ``profile_json.top_values`` first, then
     ``sample_values_json``). ``min``/``max`` come from the numeric profile.
     """
-    profile = _as_obj(profile_json) or {}
-    samples = _as_obj(sample_values_json) or []
+    samples = _as_obj(sample_values_json)
+    # The ingestion PII policy uses [] to revoke sample access. Profile
+    # values and numeric ranges must not undo that decision in prompts.
+    profile = {} if samples == [] else (_as_obj(profile_json) or {})
+    samples = samples or []
     distinct = profile.get("distinct_estimate") if isinstance(profile, dict) else None
     mn = profile.get("min") if isinstance(profile, dict) else None
     mx = profile.get("max") if isinstance(profile, dict) else None
