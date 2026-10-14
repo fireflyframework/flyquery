@@ -215,7 +215,7 @@ and flyquery. A CI gate blocks any PR that drifts.
 | `web/agent_deps.py` | Agent-token FastAPI dependency |
 | `web/openapi_override.py` | OpenAPI spec customisation |
 | `core/agents/builder.py` | `build_agent` factory |
-| `core/observability/__init__.py` | `DEFAULT_MIDDLEWARE` stack |
+| `core/observability/__init__.py` | Configured provider prompt-cache policy |
 | `core/services/auth/agent_token_service.py` | Token verify logic |
 | `core/services/auth/redis_rate_limiter.py` | Redis rate limiter |
 | `web/controllers/agent_tokens_controller.py` | Token CRUD endpoints |

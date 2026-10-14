@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,10 +18,8 @@
 * :func:`timed_agent_run` -- async context manager that records the
   per-stage latency and propagates the W3C correlation context into
   the agent's structured logs.
-* :data:`DEFAULT_MIDDLEWARE` -- the agentic middleware stack every
-  ``FireflyAgent`` is built with: usage tracking, logging,
-  prompt-cache, validation. The orchestrator's RetryMiddleware lives
-  separately so a stage can opt out (e.g. the deterministic ones).
+* :func:`build_agent_middleware` -- the configured provider prompt-cache
+  policy. Agentic supplies logging and observability defaults separately.
 * :func:`log_outbound` -- thin wrapper around :func:`structlog.get_logger`
   to emit the ``outbound_call`` line for every LLM / webhook call.
 """
@@ -30,16 +29,10 @@ from __future__ import annotations
 import logging
 import os
 import time
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fireflyframework_agentic.agents.builtin_middleware import (
-    LoggingMiddleware,
-    ObservabilityMiddleware,
-    ValidationMiddleware,  # noqa: F401 -- referenced from the module docstring as an extension point
-)
-from fireflyframework_agentic.agents.middleware import AgentMiddleware
 from fireflyframework_agentic.agents.prompt_cache import PromptCacheMiddleware
 
 logger = logging.getLogger(__name__)
@@ -56,33 +49,24 @@ def _prompt_cache_enabled() -> bool:
     return raw not in {"off", "0", "false", "no"}
 
 
-#: Anthropic prompt-cache middleware -- single shared instance reused
-#: by every service so the cache settings stay consistent (same TTL,
-#: same blocks marked). System prompts are massive and identical
-#: across the dozens of LLM calls per discovery, so this is the
-#: cheapest, highest-leverage cost optimisation we have.
-PROMPT_CACHE_MIDDLEWARE = PromptCacheMiddleware(
-    cache_system_prompt=True,
-    cache_last_message=True,
-    cache_ttl_seconds=300,
-    enabled=_prompt_cache_enabled(),
-)
+def build_agent_middleware() -> list[PromptCacheMiddleware]:
+    """Read the switch for each agent; cache only static instructions.
 
-
-DEFAULT_MIDDLEWARE: Sequence[AgentMiddleware] = (
-    PROMPT_CACHE_MIDDLEWARE,
-    LoggingMiddleware(),
-    ObservabilityMiddleware(),
-)
-"""Middleware stack applied to every :class:`FireflyAgent` constructed
-by an intelligence stage. Listed in execution order: outermost first.
-
-Stages that want bespoke middleware (e.g. a hard cost-cap on the
-duplicity detector, output validation via
-:class:`ValidationMiddleware` with a tenant-specific reviewer)
-append to this tuple instead of replacing it, so the baseline
-behaviour stays consistent.
-"""
+    Agentic already supplies logging and observability. Without a tenant
+    cache authority, do not mark conversation/tool content or share an OpenAI
+    routing key. This middleware never stores model responses in flyquery.
+    """
+    if not _prompt_cache_enabled():
+        return []
+    return [
+        PromptCacheMiddleware(
+            cache_system_prompt=True,
+            cache_last_message=False,
+            cache_tool_definitions=False,
+            cache_ttl_seconds=300,
+            openai_cache_key="",
+        )
+    ]
 
 
 @asynccontextmanager
