@@ -163,9 +163,10 @@ A Postgres role attribute that exempts the role from RLS policies. The
 (runtime) must NOT have BYPASSRLS.
 
 **lock-step**
-Byte-equivalent modules shared across flycanon, flyradar, and flyquery. Any
-change to a lock-step module must be applied to all three services. Verified
-by `scripts/check_lockstep.py` in CI.
+The local source-contract check: nineteen normalized historical shared
+baselines and two reviewed service-specific agent/cache variants. It rejects
+drift without asserting that current canon/radar main has identical files.
+See [architecture](architecture.md#9-lock-step-modules).
 
 **hybrid retrieval**
 The retrieval strategy combining BM25 (full-text search via `content_tsv`)

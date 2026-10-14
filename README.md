@@ -294,9 +294,10 @@ The **hexagonal adapter ring** means every external boundary (object store, file
 reader, vector store, PII scanner, semantic compiler, rate limiter) is a Python
 `Protocol`; the domain core never depends on a concrete implementation.
 
-Lock-step modules (`web/conventions/*`, `agent_deps.py`, `agent_token_service.py`,
-`builder.py`) are byte-equivalent with flycanon and flyradar. A CI gate
-(`scripts/check_lockstep.py`) blocks PRs that drift.
+The source-contract gate (`scripts/check_lockstep.py`) preserves nineteen
+normalized historical shared baselines and two explicitly reviewed
+service-specific agent/cache variants. It blocks unreviewed drift; it does
+not claim that current canon or radar main has identical source files.
 
 See [docs/architecture.md](docs/architecture.md) for the full picture.
 

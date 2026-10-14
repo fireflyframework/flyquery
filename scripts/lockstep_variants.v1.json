@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "canonical_source": {
+    "repository": "https://github.com/fireflyframework/flycanon",
+    "revision": "aa2486ac98bf2bb92f0187ac30ca80900fae8abd",
+    "builder_sha256": "4859aa020705b651fbc94e703f8fb4785767f80b79ceb9db1b4c5a058940948b",
+    "observability_module_exists": false,
+    "existing_rlm_cache_switch": "FLYCANON_RLM_PROMPT_CACHE"
+  },
+  "variants": {
+    "src/flyquery/core/agents/builder.py": {
+      "sha256": "f213fff74c37c1b5fe7c0a14f3b55439064531b9086e5d45b1c125d6254063c7",
+      "rationale": "The current canon factory preserves Azure model resolution and has different settings. flyquery retains its own model factory and adds the tested instruction-only prompt-cache policy; full-file parity with canon is not asserted."
+    },
+    "src/flyquery/core/observability/__init__.py": {
+      "sha256": "1458f4346d80dff5a13873153645836d1043f232c0c1872a1be010b0a4d3c02a",
+      "rationale": "Canon at the referenced release has no generic core/observability module. flyquery owns its per-construction FLYQUERY_PROMPT_CACHE switch, adds no user/tool cache flags or shared OpenAI routing key, and relies on Agentic logging/observability defaults."
+    }
+  }
+}

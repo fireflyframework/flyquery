@@ -16,7 +16,7 @@
 
 ## 1. Overview
 
-flyquery uses seven `FireflyAgent` instances, all built via the lock-step
+flyquery uses seven `FireflyAgent` instances, all built via the shared
 `build_agent` factory from `core/agents/builder.py`. Each agent:
 
 - Has a single `_INSTRUCTIONS` string that defines its behaviour.
@@ -477,7 +477,7 @@ def build_my_agent(settings):
     )
 ```
 
-The `build_agent` factory (lock-step with flycanon/flyradar) wires:
+The service-specific `build_agent` factory wires:
 - `auto_register=False` — each agent instance is fresh per call; no shared
   pydantic-ai registry state.
 - Agentic's default logging and observability middleware, without duplicate

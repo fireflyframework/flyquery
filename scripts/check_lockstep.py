@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,18 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Lock-step CI gate (spec §14).
+"""Check nineteen normalized historical baselines and two reviewed variants.
 
-Computes the SHA-256 of each lock-step file (after a deterministic
-service-name de-substitution: replaces 'flyquery' -> 'flycanon',
-'FLYQUERY' -> 'FLYCANON', etc. — same regex set as the copy
-script in Tasks 10-11) and compares against the pinned canon SHA in
-scripts/lockstep_pins.json.
-
-Drift = exit code 1. Pinned SHAs are refreshed when an intentional
-canon-side change lands and we propagate it across canon/radar/flyquery
-in lock-step (rare).
+The baseline pins are local historical contracts, not a comparison with live
+canon main. Only the two listed service-specific paths may use full-file pins
+from the versioned manifest; every other path keeps its original baseline.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -32,7 +28,6 @@ import json
 import re
 import sys
 from pathlib import Path
-
 
 LOCKSTEP_FILES = [
     "src/flyquery/web/agent_deps.py",
@@ -58,10 +53,45 @@ LOCKSTEP_FILES = [
     "src/flyquery/web/controllers/agent_tokens_controller.py",
 ]
 
+SERVICE_VARIANTS = {
+    "src/flyquery/core/agents/builder.py",
+    "src/flyquery/core/observability/__init__.py",
+}
+
+
+def _service_variants(root: Path) -> dict[str, dict[str, str]]:
+    manifest = json.loads((root / "scripts" / "lockstep_variants.v1.json").read_text())
+    if not isinstance(manifest, dict) or type(manifest.get("version")) is not int or manifest["version"] != 1:
+        raise ValueError("UNSUPPORTED VARIANT VERSION")
+    source = manifest.get("canonical_source")
+    if (
+        not isinstance(source, dict)
+        or source.get("repository") != "https://github.com/fireflyframework/flycanon"
+        or not isinstance(source.get("revision"), str)
+        or not re.fullmatch(r"[0-9a-f]{40}", source["revision"])
+    ):
+        raise ValueError("INVALID CANONICAL SOURCE")
+    variants = manifest.get("variants")
+    if not isinstance(variants, dict):
+        raise ValueError("INVALID VARIANT MANIFEST")
+    if set(variants) - SERVICE_VARIANTS:
+        raise ValueError("UNKNOWN VARIANT PATH")
+    if set(variants) != SERVICE_VARIANTS:
+        raise ValueError("MISSING VARIANT PIN")
+    for rel, entry in variants.items():
+        if (
+            not isinstance(entry, dict)
+            or not isinstance(entry.get("rationale"), str)
+            or not entry["rationale"].strip()
+        ):
+            raise ValueError(f"INVALID VARIANT RATIONALE: {rel}")
+        if not isinstance(entry.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]):
+            raise ValueError(f"INVALID VARIANT PIN: {rel}")
+    return variants
+
 
 def _normalise(text: str) -> bytes:
-    """Reverse the flyquery substitutions to canon's form, so the SHA is
-    canon-pinned regardless of which service we're checking."""
+    """Apply the unchanged historic service substitutions used by baseline pins."""
     text = re.sub(r"\bflyquery\b", "flycanon", text)
     text = re.sub(r"\bFLYQUERY\b", "FLYCANON", text)
     text = re.sub(r"\bflyquery_", "canon_", text)
@@ -71,6 +101,11 @@ def _normalise(text: str) -> bytes:
 
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
+    try:
+        variants = _service_variants(root)
+    except (OSError, ValueError) as exc:
+        print(f"INVALID VARIANT MANIFEST: {exc}")
+        return 1
     pins_path = root / "scripts" / "lockstep_pins.json"
     pins: dict[str, str] = json.loads(pins_path.read_text()) if pins_path.exists() else {}
     drift: list[str] = []
@@ -79,16 +114,18 @@ def main() -> int:
         if not p.exists():
             drift.append(f"MISSING: {rel}")
             continue
-        sha = hashlib.sha256(_normalise(p.read_text())).hexdigest()
-        pinned = pins.get(rel)
+        variant = variants.get(rel)
+        sha = hashlib.sha256(p.read_bytes() if variant else _normalise(p.read_text())).hexdigest()
+        pinned = variant["sha256"] if variant else pins.get(rel)
         if pinned is None:
             drift.append(f"UNPINNED: {rel} -> {sha}")
         elif pinned != sha:
-            drift.append(f"DRIFT: {rel}\n    pinned:  {pinned}\n    current: {sha}")
+            label = "SERVICE VARIANT DRIFT" if variant else "DRIFT"
+            drift.append(f"{label}: {rel}\n    pinned:  {pinned}\n    current: {sha}")
     if drift:
         print("\n".join(drift))
         return 1
-    print(f"lockstep OK: {len(LOCKSTEP_FILES)} files match pins")
+    print("lockstep OK: 19 historical baselines and 2 reviewed service variants match pins")
     return 0
 
 
