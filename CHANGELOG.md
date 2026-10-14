@@ -5,6 +5,34 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.10.3] - 2026-10-14
+
+### Fixed
+
+- Enforce the positive `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` setting for
+  each DuckDB attempt. A monotonic deadline includes queueing, setup, SQL,
+  row fetching and copy-on-write export. A watchdog interrupts the native
+  connection; expired attempts cannot return a successful result or mutation.
+- Preserve task cancellation while waiting for the native worker to close.
+  Each call owns its connection. Cleanup failures remain chained to the
+  cancellation exception, and copy-on-write scratch files are removed even
+  when connection close reports an error. Original snapshots remain unchanged.
+- Record timed-out statements as `FAILED` with SQL state `57014` in query
+  history. Critic does not repair this resource failure, and a timeout during
+  repair cannot restore an earlier success as the final result.
+- Keep watchdog waits within native threading limits for large positive
+  integer budgets. Retain transient interruption failures and retry them.
+
+### Operational scope
+
+- The deadline is a cooperative, per-attempt DuckDB budget. It is not a hard
+  process kill, an operating-system sandbox, or an end-to-end request SLA.
+  Model calls, retrieval and object-store work outside the executor have
+  separate budgets. Candidate selection keeps its existing finite policy.
+- Query DTOs and the seven typed agent page APIs are unchanged. Python and
+  Java SDK metadata now report 26.10.3. The framework pins and the nineteen
+  historical source contracts plus two reviewed service variants are retained.
+
 ## [26.10.2] - 2026-10-14
 
 ### Changed

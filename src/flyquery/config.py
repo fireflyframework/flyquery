@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,7 +57,7 @@ class FlyquerySettings(BaseSettings):
     duckdb_httpfs_metadata_cache_mb: int = 512
     duckdb_memory_limit: str = "4GB"
     default_row_cap: int = 1000
-    default_statement_timeout_ms: int = 30000
+    default_statement_timeout_ms: int = Field(default=30000, gt=0)
     result_preview_max_bytes: int = 131072
     result_ttl_hours: int = 24
 

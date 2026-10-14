@@ -266,6 +266,8 @@ class SqlExecuteController:
         else:
             execution_status = "FAILED"
             error_json = {"message": result.message}
+            if result.sql_state is not None:
+                error_json["sql_state"] = result.sql_state
 
         query_id = await self._query_repo.create_query(
             tenant_id=ctx.tenant_id,
@@ -447,6 +449,8 @@ class SqlExecuteController:
             yield _sse_frame("executed", {"error": exec_result.message, "elapsed_ms": elapsed})
             execution_status = "FAILED"
             error_json = {"message": exec_result.message}
+            if exec_result.sql_state is not None:
+                error_json["sql_state"] = exec_result.sql_state
 
         query_id = await self._query_repo.create_query(
             tenant_id=ctx.tenant_id,

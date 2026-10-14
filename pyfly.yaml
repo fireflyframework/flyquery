@@ -12,7 +12,7 @@ pyfly:
   # and admin tooling identify the service correctly.
   app:
     name: flyquery
-    version: 26.10.2
+    version: 26.10.3
     description: >-
       Operational Structured-Data Intelligence (upload-driven).
       Multi-tenant ingestion + Text-to-SQL over user-uploaded structured

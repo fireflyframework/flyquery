@@ -5,7 +5,7 @@
     <artifactId>flyquery-sdk</artifactId>
     <packaging>jar</packaging>
     <name>flyquery-sdk</name>
-    <version>26.10.2</version>
+    <version>26.10.3</version>
     <url>https://github.com/fireflyframework/flyquery</url>
     <description>Java SDK for flyquery -- Operational Structured-Data Intelligence. Auto-generated from the flyquery OpenAPI 3.1 spec. Targets Java 25 + Spring Boot 3.5.9 + WebFlux.</description>
     <scm>

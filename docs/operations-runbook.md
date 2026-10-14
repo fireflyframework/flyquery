@@ -255,10 +255,13 @@ the `TenantContextMiddleware` log output.
 failure, inspect rate-limit and latency errors from the configured provider.
 For DuckDB, inspect the query plan and reduce expensive scans or joins.
 
-`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` is currently unenforced by
-DuckDBExecutor, and query requests have no timeout override. Raising it
-does not stop a long-running SQL statement. The SELECT row cap limits
-returned rows, not computation time; see the
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` controls a positive cooperative
+per-attempt deadline (30,000 ms by default). Expiry interrupts that native
+connection and records `FAILED` with SQL state `57014`; Critic does not
+repair this failure. Raising the setting permits more execution time, and
+query requests have no timeout override. Keep process/container limits for
+uncooperative native or filesystem work. The SELECT row cap limits returned
+rows, not computation time; see the
 [SQL read boundary](security-model.md#sql-read-boundary).
 
 ---

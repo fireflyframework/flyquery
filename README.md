@@ -30,7 +30,7 @@ JSONL, Parquet, Avro, ORC, Arrow and Feather, plus their `.gz`,
 [![OpenAPI](https://img.shields.io/badge/api-openapi%203.1-green)](docs/api-reference.md)
 [![DuckDB](https://img.shields.io/badge/query%20engine-duckdb-yellow)](docs/architecture.md)
 [![pgvector](https://img.shields.io/badge/vector--store-pgvector-336791)](docs/architecture.md)
-[![Version](https://img.shields.io/badge/version-26.10.2-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-26.10.3-green.svg)](#)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 </div>
@@ -287,8 +287,8 @@ Postgres stores metadata, embeddings, relations, audit, and agent tokens.
 Cloud storage and ingestion adapters are separate from the qualified local
 query workflow. The [SQL read boundary](docs/security-model.md#sql-read-boundary)
 explains the exact file allowlist, copy-on-write, and upstream authorization.
-Statement timeouts are currently unenforced; these in-process controls do not
-constitute an operating-system SQL sandbox.
+Each execution attempt has a configurable cooperative DuckDB deadline.
+These in-process controls do not constitute an operating-system SQL sandbox.
 
 The **hexagonal adapter ring** means every external boundary (object store, file
 reader, vector store, PII scanner, semantic compiler, rate limiter) is a Python

@@ -215,8 +215,10 @@ Properties of this design:
 
 The connection is not read-only. SQL admission and snapshot checks precede
 execution; see the [SQL read boundary](security-model.md#sql-read-boundary)
-for the full policy. The global statement-timeout setting is unenforced,
-so the SELECT row cap does not bound the time required to compute rows.
+for the full policy. Each call has its own positive cooperative deadline
+and watchdog, which interrupts only that call's native connection. Cancellation
+waits for worker cleanup. The SELECT row cap limits output size, not compute time;
+use deployment limits for hard CPU/memory isolation.
 
 **Concurrency concern:** DuckDB in-process with asyncio requires care. DuckDB
 operations are synchronous and CPU-bound. They block the asyncio event loop

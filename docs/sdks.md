@@ -21,10 +21,10 @@ Install the Python wheel from the canonical GitHub Release, rather than assuming
 that a package with the same name on PyPI is maintained by this project:
 
 ```bash
-uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.2/flyquery_sdk-26.10.2-py3-none-any.whl
+uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.3/flyquery_sdk-26.10.3-py3-none-any.whl
 ```
 
-Keep service and client versions aligned. This release uses version `26.10.2`;
+Keep service and client versions aligned. This release uses version `26.10.3`;
 read the release notes and API snapshot before upgrading. The repository also
 retains earlier releases and their original assets.
 

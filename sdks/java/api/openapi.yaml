@@ -13,7 +13,7 @@ info:
     name: Apache-2.0
     url: https://github.com/fireflyframework/flyquery/blob/main/LICENSE
   title: flyquery
-  version: 26.10.2
+  version: 26.10.3
 servers:
 - description: This service
   url: /

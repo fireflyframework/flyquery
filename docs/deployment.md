@@ -140,7 +140,7 @@ is the canonical reference. Copy to `.env` and edit.
 |----------|---------|-------|
 | `FLYQUERY_DUCKDB_MEMORY_LIMIT` | `4GB` | Per-connection memory cap |
 | `FLYQUERY_DEFAULT_ROW_CAP` | `1000` | Default result row limit |
-| `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` | `30000` | Configuration field; currently unenforced by DuckDBExecutor |
+| `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` | `30000` | Positive per-attempt cooperative native deadline; not a hard OS budget |
 | `FLYQUERY_RESULT_TTL_HOURS` | `24` | Presigned URL and result object TTL |
 | `FLYQUERY_RESULT_PREVIEW_MAX_BYTES` | `131072` | Preview JSON size cap (128 KiB) |
 | `FLYQUERY_DUCKDB_HTTPFS` | `true` | Configuration field; does not enable httpfs in DuckDBExecutor |
@@ -148,8 +148,10 @@ is the canonical reference. Copy to `.env` and edit.
 The qualified query workflow uses registered local Parquet with DuckDB >= 1.3.2.
 External access and extension autoload/install remain disabled; see the
 [SQL read boundary](security-model.md#sql-read-boundary). Query requests have
-no per-request row-cap or statement-timeout override, and the global timeout
-setting does not stop a long-running statement.
+no per-request row-cap or statement-timeout override. The positive global
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` setting (30,000 ms by default) applies
+a cooperative native deadline to each executor attempt. Continue to configure
+process/container resource limits; this does not replace an OS-level sandbox.
 
 ### Ingestion
 

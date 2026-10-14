@@ -19,6 +19,7 @@ from flyquery.core.services.query.query_service import QueryService
 class _Settings:
     duckdb_memory_limit = "256MB"
     default_row_cap = 3
+    default_statement_timeout_ms = 5000
     entity_resolution_max_literals = 8
     group_coverage_repair_enabled = False
     signed_measure_repair_enabled = True
