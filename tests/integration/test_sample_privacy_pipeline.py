@@ -100,6 +100,7 @@ async def test_original_pii_decision_survives_profile_and_retrieval(tmp_path, po
                     created_by="privacy-fixture",
                 )
             )
+            await session.flush()
             session.add(
                 SchemaObject(
                     id=column,

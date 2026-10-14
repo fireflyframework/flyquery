@@ -27,6 +27,9 @@ def test_openapi_snapshot_matches_running_app():
     actual = json.loads(snapshot_path.read_text())
     # We accept differences in `info.version` (CalVer-bumped) but the
     # paths + components must match exactly.
+    assert actual.get("components") == expected.get("components"), (
+        "OpenAPI schema drift! Run `task openapi-snapshot` before building SDKs."
+    )
     expected_keys = set(expected.get("paths", {}).keys())
     actual_keys = set(actual.get("paths", {}).keys())
     assert expected_keys == actual_keys, (

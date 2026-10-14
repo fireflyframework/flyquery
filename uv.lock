@@ -1117,7 +1117,7 @@ provides-extras = ["all", "azure-embeddings", "bedrock-embeddings", "binary", "c
 
 [[package]]
 name = "flyquery"
-version = "26.10.1"
+version = "26.10.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },

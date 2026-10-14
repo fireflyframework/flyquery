@@ -123,9 +123,9 @@ sibling-client behaviour + every accessor.
 | `docker-publish.yaml` | push to main + `v*.*.*` tags | linux/amd64 + linux/arm64 image to GHCR |
 | `publish-sdks.yaml` | `v*.*.*` tags only | Java to GitHub Packages, Python wheel/sdist to Release assets |
 
-If `pr-gate` is green on `main` before you tag, the tag-driven
-workflows essentially can't fail (they share the same checkout
-+ vendor setup).
+Green PR checks qualify the source. Publication can still fail on registry
+authentication, downloads or packaging; verify the tag workflows and every
+published artifact separately before announcing the release.
 
 ## Tag + push sequence
 
