@@ -1,6 +1,6 @@
 [project]
 name = "flyquery_sdk"
-version = "26.10.0"
+version = "26.10.1"
 description = "Async-first Python client for flyquery — Tabular Intelligence: Text-to-SQL service over user-uploaded structured files."
 authors = [
   { name = "Firefly Software Foundation", email = "team@firefly.io" },

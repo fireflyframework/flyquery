@@ -18,19 +18,19 @@ default headers.
 
 ## Install
 
-For release 26.10.0, use the matching Maven coordinate:
+For release 26.10.1, use the matching Maven coordinate:
 
 ```xml
 <dependency>
   <groupId>com.firefly</groupId>
   <artifactId>flyquery-sdk</artifactId>
-  <version>26.10.0</version>
+  <version>26.10.1</version>
 </dependency>
 ```
 
 The publisher targets GitHub Packages at
 `https://maven.pkg.github.com/fireflyframework/flyquery`. GitHub Packages requires
-Maven authentication. See the [release](https://github.com/fireflyframework/flyquery/releases/tag/v26.10.0)
+Maven authentication. See the [release](https://github.com/fireflyframework/flyquery/releases/tag/v26.10.1)
 for downloadable artifacts and use the service's matching version. Earlier
 release artifacts keep their original registry coordinates.
 
