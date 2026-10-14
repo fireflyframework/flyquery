@@ -182,6 +182,8 @@ jobs:
             pyproject.toml
       - name: uv sync (dev + s3 for MinIO conformance)
         run: uv sync --extra dev --extra s3 --extra file-readers
+      - name: Build the pinned upstream MinIO test server
+        run: docker build --tag flyquery-integration-minio:${{ github.sha }} tests/integration/minio
       - name: pytest tests/integration
         # Integration tests boot real Postgres + Redis + MinIO
         # containers via testcontainers. GitHub Actions Ubuntu runners
@@ -189,6 +191,7 @@ jobs:
         # GCS / Azure conformance tests stay skipped (no testcontainer
         # images installed); LLM-gated tests stay deselected.
         env:
+          FLYQUERY_TEST_MINIO_IMAGE: flyquery-integration-minio:${{ github.sha }}
           OPENAI_API_KEY: sk-dummy-key
           ANTHROPIC_API_KEY: sk-dummy-key
           AWS_DEFAULT_REGION: eu-west-1
