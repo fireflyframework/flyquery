@@ -204,7 +204,7 @@ inside notebooks or other hosts with a running event loop.
 ## Stream a response
 
 Use `stream_without_preload_content` to retain the response body. The returned
-wrapper contains the aiohttp response in `.response`:
+value is the raw aiohttp `ClientResponse`:
 
 ```python
 from flyquery_sdk.api import QueryApi
@@ -216,11 +216,11 @@ stream = await QueryApi(api).stream_without_preload_content(
     _request_timeout=120.0,
 )
 try:
-    stream.response.raise_for_status()
-    async for line in stream.response.content:
+    stream.raise_for_status()
+    async for line in stream.content:
         print(line.decode("utf-8").rstrip())
 finally:
-    stream.response.release()
+    stream.release()
 ```
 
 Interpret the SSE frames described in the [query pipeline](../../docs/pipeline.md).
