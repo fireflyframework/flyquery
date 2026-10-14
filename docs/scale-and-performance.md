@@ -92,16 +92,15 @@ Mitigations:
 
 ### Object-storage I/O (large Parquet files)
 
-Stage 2 (parse) and DuckDB query both read from object storage.
-For 1 GB Parquet files:
-- Ingest stage 2: 5–15 s (streaming read + re-materialise)
-- DuckDB query: 2–10 s (httpfs streaming with predicate pushdown)
+Ingestion reads through ObjectStore adapters. The qualified DuckDB query
+workflow reads registered local Parquet snapshots accessible to the API
+process. Measure ingestion storage I/O and local query scans separately;
+remote httpfs query timings have not been qualified.
 
-Mitigations:
-- Enable `FLYQUERY_DUCKDB_HTTPFS_METADATA_CACHE_MB=512` (already default).
-- Place flyquery and object storage in the same AWS region / GCP region.
-- Use Parquet with efficient row groups and column-level statistics for
-  better predicate pushdown.
+Use efficient Parquet row groups and column statistics for predicate
+pushdown. `FLYQUERY_DUCKDB_HTTPFS_METADATA_CACHE_MB` does not configure the
+current executor, which disables extension autoload/install and external
+access. See the [SQL read boundary](security-model.md#sql-read-boundary).
 
 ---
 
@@ -116,8 +115,8 @@ Mitigations:
 | `FLYQUERY_EXPAND_ITERS` | `2` | +1-2 s per iteration | Better grounding |
 | `FLYQUERY_TOP_K_SCHEMA` | `12` | +10-20 ms per extra row | More context for Grounding |
 | `FLYQUERY_RERANKER_TOP_N` | `30` | +50-200 ms | Better schema linking |
-| `FLYQUERY_DUCKDB_MEMORY_LIMIT` | `4GB` | N/A | Prevents OOM |
-| `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` | `30000` | N/A | Prevents runaway queries |
+| `FLYQUERY_DUCKDB_MEMORY_LIMIT` | `4GB` | N/A | Per-connection DuckDB memory budget |
+| `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` | `30000` | None in current executor | Unenforced; does not prevent runaway queries |
 
 ### Ingestion
 
@@ -133,7 +132,7 @@ Mitigations:
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `FLYQUERY_DUCKDB_HTTPFS_METADATA_CACHE_MB` | `512` | Higher = fewer object-store HEAD calls |
+| `FLYQUERY_DUCKDB_HTTPFS_METADATA_CACHE_MB` | `512` | Configuration field; unused by the current query executor |
 | `FLYQUERY_OBJECT_STORE_PRESIGN_TTL_S` | `86400` | Reduce to limit exposure window |
 | `FLYQUERY_RESULT_TTL_HOURS` | `24` | Reduce to save object-storage costs |
 
@@ -195,10 +194,10 @@ With 10 concurrent queries, expect 10× CPU cores to avoid queuing.
 
 ### Network
 
-Each query downloads the relevant Parquet columns from object storage.
-With `httpfs` and column predicate pushdown, only the queried columns are
-transferred. For a 100-column table with 1M rows querying 3 columns:
-typical transfer = 5–50 MB per query.
+ObjectStore ingestion and result transfers contribute network traffic. The
+qualified query executor scans registered local Parquet; it does not load
+httpfs. Remote column-transfer estimates require separate provider and query
+qualification. See the [SQL read boundary](security-model.md#sql-read-boundary).
 
 ### Horizontal worker scaling formula
 
