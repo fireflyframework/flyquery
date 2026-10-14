@@ -17,7 +17,9 @@ framework-family wordmarks. The Manrope glyph and its spacing remain intact.
 Reusable light and dark logos accompany the banners. Each banner contains its
 own title and description and loads no fonts, JavaScript or external resources.
 
-The illustration describes a table query and an inspected result.
+The illustration follows a highlighted table through a SQL query to a result
+chart. The SQL panel makes the query step visible between the data and its
+result.
 It represents the service's purpose; it is not a live status display.
 
 Artwork was produced from the [Framework brandkit](https://github.com/fireflyframework/brand-kit)
