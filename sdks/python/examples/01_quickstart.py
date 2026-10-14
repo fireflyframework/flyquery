@@ -16,38 +16,31 @@
 """End-to-end quickstart: workspace + dataset + bulk upload + batch query.
 
 Run against a local flyquery (``docker compose up`` + ``uvicorn
-flyquery.main:app``) on port 8520. Uses the synthetic fixtures
-under ``../../../examples`` so it works without any prep.
+flyquery.main:app``) on port 8520. Uses synthetic fixtures under ``../../../examples``. Configure
+a tenant, workspace and model providers before running it.
 
 Usage::
 
-    uv run python sdks/python/examples/01_quickstart.py
+    python sdks/python/examples/01_quickstart.py
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
-from flyquery_sdk import FlyqueryClient
+from flyquery_sdk.client import FlyqueryClient
 
 ROOT_FIXTURES = Path(__file__).resolve().parent.parent.parent.parent / "examples"
 
 
 async def main() -> None:
     async with FlyqueryClient(
-        base_url="http://127.0.0.1:8520",
-        tenant_id="quickstart",
-        workspace_id="qs1",
+        base_url=os.environ.get("FLYQUERY_URL", "http://127.0.0.1:8520"),
+        tenant_id=os.environ["FLYQUERY_TENANT_ID"],
+        workspace_id=os.environ["FLYQUERY_WORKSPACE_ID"],
     ) as fly:
-        ws = await fly.find_or_create_workspace("qs1", name="Quickstart")
-        # Rebind to the real workspace UUID so subsequent calls scope
-        # to it (slug+UUID are both accepted but UUID avoids a round-trip).
-        fly._workspace_id = str(ws.id)
-        fly._http.headers["X-Workspace-Id"] = str(ws.id)
-        fly._api_client.default_headers["X-Workspace-Id"] = str(ws.id)
-        print(f"workspace = {ws.id}  (slug={ws.slug})")
-
         ds = await fly.find_or_create_dataset(
             "quickstart",
             description="Synthetic CSV / JSON / XLSX / Parquet from examples/.",

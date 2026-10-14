@@ -170,14 +170,25 @@ jobs:
           for p in (
               pathlib.Path("pyproject.toml"),
               pathlib.Path("flyquery_sdk/__init__.py"),
+              pathlib.Path("setup.py"),
           ):
               if not p.exists():
                   continue
               text = p.read_text()
               text = re.sub(r'^(version\s*=\s*")[^"]+(")', rf'\g<1>{tag}\g<2>', text, count=1, flags=re.MULTILINE)
               text = re.sub(r'^(__version__\s*=\s*")[^"]+(")', rf'\g<1>{tag}\g<2>', text, count=1, flags=re.MULTILINE)
+              text = re.sub(r'^(VERSION\s*=\s*")[^"]+(")', rf'\g<1>{tag}\g<2>', text, count=1, flags=re.MULTILINE)
               p.write_text(text)
           PY
+
+      - name: Validate SDK before packaging
+        run: |
+          uv venv
+          uv pip install --editable ".[dev]"
+          uv run ruff check flyquery_sdk/client.py tests examples
+          uv run ruff format --check flyquery_sdk/client.py tests examples
+          uv run mypy flyquery_sdk tests
+          uv run pytest -q tests
 
       - name: Build sdist + wheel with uv
         run: |
@@ -198,12 +209,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          TAG_VERSION="${TAG#v}"
+          WHEEL=$(basename dist/*.whl)
           {
             echo "### Published Python SDK"
             echo
-            echo "**PyPI-style install (from the GitHub Release):**"
+            echo "**Install from the GitHub Release:**"
             echo '```bash'
-            echo "uv add https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/flyquery_sdk-${TAG_VERSION}-py3-none-any.whl"
+            echo "uv add https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${WHEEL}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

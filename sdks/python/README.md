@@ -1,325 +1,246 @@
 <div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="../../docs/assets/brand/banner-dark-mobile.svg">
+  <source media="(max-width: 600px)" srcset="../../docs/assets/brand/banner-light-mobile.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="../../docs/assets/brand/banner-dark.svg">
+  <img src="../../docs/assets/brand/banner-light.svg" alt="flyquery by Firefly" width="100%">
+</picture>
 
-<img src="../../docs/assets/logo.png" alt="flyquery" width="100%" />
-
-### **Python SDK** &nbsp;&middot;&nbsp; asyncio &nbsp;&middot;&nbsp; Python 3.9+
-
+### Python SDK · asyncio · Python 3.9+
 </div>
 
----
-
-Async-first Python client for the
-[flyquery](https://github.com/fireflyframework/flyquery) Tabular
-Intelligence service — Text-to-SQL over user-uploaded structured
-files.
-
-- **Async-first**: every endpoint returns a coroutine; pairs naturally
-  with `asyncio`, FastAPI, Starlette, Jupyter's top-level await, or
-  any other event-loop host.
-- **Pydantic v2-typed request + response models** — full
-  IDE-completion + runtime validation on the wire payloads.
-- **`aiohttp` under the hood** — pooled connections, retries
-  (via `aiohttp-retry`), timeouts you control.
-- Carries the firefly four-header wire contract
-  (`X-Tenant-Id` / `X-Workspace-Id` / `X-Correlation-Id` /
-  `X-Agent-Token`) on every outbound request.
-- **18 split API classes** — one per resource family: workspaces,
-  datasets, files, tables, schema, relations, semantic, glossary,
-  examples, query, conversations, ingest, sql, agent-tokens, meta,
-  agent-query, agent-sql, agent-examples.
-- No service dependency — the SDK ships its own Pydantic schemas so
-  it installs cleanly alongside any client codebase without pulling
-  the framework.
-- Apache-2.0; auto-generated from `flyquery/openapi.json` via
-  [`openapi-generator-cli`](https://openapi-generator.tech/).
-
-## Wire-contract compatibility
-
-Compatible with **flyquery service version `26.5.x`**.
-
-| SDK | Service |
-|-----|---------|
-| `26.5.4` | `26.5.x` |
+The Python SDK connects applications to [flyquery](https://github.com/fireflyframework/flyquery).
+It includes generated API classes and Pydantic request/response models, plus
+`FlyqueryClient` for uploads, questions, history and workspace setup. Installing
+it does not install the flyquery server, pyfly or fireflyframework-agentic.
 
 ## Install
 
-```bash
-uv add flyquery-sdk==26.5.4
-# or
-pip install flyquery-sdk==26.5.4
-```
-
-From a sibling-repo checkout (development):
+For the 26.10.0 release, install the wheel from GitHub Releases:
 
 ```bash
-pip install -e ./sdks/python
+uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.0/flyquery_sdk-26.10.0-py3-none-any.whl
+# Or, in an activated Python environment:
+pip install https://github.com/fireflyframework/flyquery/releases/download/v26.10.0/flyquery_sdk-26.10.0-py3-none-any.whl
 ```
 
-## Quick start
+The source distribution is attached to the same
+[release](https://github.com/fireflyframework/flyquery/releases/tag/v26.10.0).
+The project publishes Python packages through GitHub Releases. For development,
+run `uv pip install -e './sdks/python[dev]'` from the repository root.
 
-The SDK ships a hand-written ``FlyqueryClient`` ergonomic wrapper on
-top of the generated API classes. It carries the tenant + workspace
-context once, exposes bulk + batch helpers the raw OpenAPI client
-can't model compactly, and returns the same Pydantic response
-models so you keep full type safety.
+Pin the SDK and service to the same release. The checked-in
+[OpenAPI snapshot](../../openapi.json) describes the generated methods; review
+release notes before changing either version.
+
+## Connect to an existing workspace
+
+Import the convenience client from `flyquery_sdk.client`. Supply the tenant
+identifier and the workspace UUID assigned by your service administrator.
+Dataset IDs are UUIDs too; names and slugs are used for lookup.
 
 ```python
 import asyncio
-from flyquery_sdk import FlyqueryClient
+import os
+
+from flyquery_sdk.client import FlyqueryClient
 
 
 async def main() -> None:
     async with FlyqueryClient(
-        base_url="https://flyquery.example.com",
-        tenant_id="acme-corp",
-        workspace_id="finance",
+        base_url=os.environ["FLYQUERY_URL"],
+        tenant_id=os.environ["FLYQUERY_TENANT_ID"],
+        workspace_id=os.environ["FLYQUERY_WORKSPACE_ID"],
     ) as fly:
-
-        # 1) Idempotent workspace + dataset setup
-        ws = await fly.find_or_create_workspace("finance", name="Finance")
-        ds = await fly.find_or_create_dataset(
-            "orders_2026",
-            description="Order fact table + customer dimension.",
+        dataset = await fly.find_or_create_dataset(
+            "orders", description="Synthetic order fixtures"
         )
-
-        # 2) Upload a single file
-        await fly.upload(ds.id, "examples/csv/sales_orders.csv")
-
-        # 3) Or bulk-upload every supported file in a directory --
-        #    runs through the same per-file pipeline in PARALLEL on
-        #    the server side; per-file failures don't abort the bulk.
-        outcome = await fly.upload_directory(ds.id, "examples/")
-        print(f"uploaded {outcome.succeeded}/{outcome.total_files}")
-        for r in outcome.results:
-            print(f"  {r.original_filename}: {r.status} ({len(r.tables)} tables)")
-
-        # 4) Ask one question
-        ans = await fly.ask(ds.id, "What was last quarter's total revenue?")
-        print(ans.sql)
-        print(ans.preview)
-        print(ans.explanation)
-
-        # 5) Or ask many in parallel -- one batched HTTP round-trip,
-        #    the server fans them out through asyncio.gather. Each
-        #    result carries the same shape as ``ans`` above plus a
-        #    ``status`` field that distinguishes OK from FAILED.
-        batch = await fly.ask_batch(ds.id, [
-            "Top 5 customers by revenue?",
-            "Average order size by country?",
-            "Refund rate this quarter?",
-        ])
-        for r in batch.results:
-            print(f"#{r.index} {r.status}: {(r.sql or '')[:80]}")
+        uploaded = await fly.upload(str(dataset.id), "examples/csv/sales_orders.csv")
+        print(uploaded)
+        answer = await fly.ask(str(dataset.id), "How many orders are there?")
+        print(answer.sql, answer.preview, answer.explanation)
 
 
 asyncio.run(main())
 ```
 
-### Bulk file upload
+Uploads can invoke profiling, description and embedding services. Natural-language
+questions invoke the configured model pipeline. Configure those providers before
+running this example; provider charges depend on your deployment.
 
-`upload_bulk` and `upload_directory` both call the bulk endpoint
-``POST /api/v1/datasets/{id}/files:bulk``. The server processes each
-file through the same reconcile → sample → profile → describe →
-embed → publish pipeline in parallel and returns one
-``BulkFileResult`` per file:
+### Create a workspace, then bind its scope
+
+An administrator can use an initial scope to create a workspace. Reopen the
+client with the returned UUID before creating datasets in that workspace:
 
 ```python
-result = await fly.upload_bulk(ds.id, [
-    "examples/csv/customers.csv",
-    "examples/csv/sales_orders.csv",
-    "examples/json/products.json",
-    "examples/parquet/transactions.parquet",
-])
-for r in result.results:
-    if r.status == "OK":
-        print(f"✓ {r.original_filename} -> file_id={r.file_id} ({len(r.tables)} tables)")
-    else:
-        print(f"✗ {r.original_filename}: {r.error}")
-print(f"summary: {result.succeeded}/{result.total_files} succeeded")
+async with FlyqueryClient(
+    base_url=url, tenant_id=tenant_id, workspace_id=initial_workspace_id
+) as setup:
+    workspace = await setup.find_or_create_workspace("finance", name="Finance")
+
+async with FlyqueryClient(
+    base_url=url, tenant_id=tenant_id, workspace_id=str(workspace.id)
+) as fly:
+    dataset = await fly.find_or_create_dataset("orders")
 ```
 
-### Batch NL queries
+Both lookup helpers create only after an HTTP 404. Authorization, transport and
+server failures propagate. Concurrent creation can return HTTP 409; these helpers
+do not provide a transactional exactly-once guarantee.
 
-Mirror the bulk-file pattern for queries: send N questions, get
-N answers back in roughly the time of one question. Each result
-carries the same ``sql``, ``preview``, ``explanation``,
-``execution_status``, and ``grounded_summary`` fields as the
-single-query response.
+## Choose the API surface
 
-### Sync helpers (notebooks + CLIs)
+| Task | Convenience method or generated class |
+|---|---|
+| Upload a file, directory or file list | `upload`, `upload_directory`, `upload_bulk` |
+| Ask a question or a batch | `ask`, `ask_batch` |
+| Read query history and results | `recent_queries`, `get_query`, `fetch_query_result` |
+| Inspect statistics and billing | `workspace_stats`, `billing_rollup` |
+| Manage schemas, relations and semantic definitions | Generated `SchemaObjectsApi`, `RelationsApi`, `SemanticMetricsApi` and related classes |
+| Execute SQL without the model pipeline | Generated `SqlExecuteApi` |
+| Call a scoped agent endpoint | Generated `AgentQueryApi`, `AgentSqlExecuteApi` and other `Agent*Api` classes |
 
-Every async method has a ``_sync`` mirror for notebook / CLI
-contexts that can't bring up an event loop:
+Generated classes are exported from `flyquery_sdk.api`. They require explicit
+context arguments even when `ApiClient` has default headers. Access a convenience
+client's generated resources through `fly.workspaces`, `fly.datasets` or
+`fly.query`; there is no public `fly.api_client` accessor.
 
 ```python
-fly = FlyqueryClient(base_url="...", tenant_id="...", workspace_id="...")
-res = fly.upload_bulk_sync(dataset_id, paths)
-ans = fly.ask_sync(dataset_id, "How many distinct customers?")
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import WorkspacesApi
+
+async with ApiClient(Configuration(host=url)) as api:
+    page = await WorkspacesApi(api).list_workspaces(
+        x_tenant_id=tenant_id,
+        x_workspace_id=workspace_id,
+        limit=20,
+        _request_timeout=30.0,
+    )
 ```
 
-### Direct access to the generated API
+### Direct SQL
 
-For knobs ``FlyqueryClient`` doesn't expose (pagination beyond
-``limit/offset``, custom timeouts on a per-call basis, agent-tier
-endpoints), reach through to the generated API classes:
-
-```python
-async with FlyqueryClient(...) as fly:
-    listing = await fly.workspaces.list_workspaces(q="acme", limit=20)
-    raw = fly.api_client  # underlying ApiClient if you need it
-```
-
-## Authentication
-
-The flyquery service expects either a user-tier JWT bearer token (on
-`/api/v1/*` routes) or an agent-tier `X-Agent-Token` (on
-`/api/v1/agent/*` routes). Wire them up on the `Configuration`:
+Direct SQL requires the workspace's `allow_direct_sql` setting. It queries tables
+already registered for the dataset and bypasses natural-language generation.
 
 ```python
-# User-tier (JWT)
-config = Configuration(
-    host="https://flyquery.example.com",
-    access_token="eyJhbGciOiJSUzI1NiIs...",
+from uuid import UUID
+from flyquery_sdk.api import SqlExecuteApi
+from flyquery_sdk.models import SqlExecuteRequest
+
+result = await SqlExecuteApi(api).execute(
+    x_tenant_id=tenant_id,
+    x_workspace_id=workspace_id,
+    sql_execute_request=SqlExecuteRequest(
+        dataset_id=UUID(dataset_id), sql="SELECT COUNT(*) AS total FROM orders"
+    ),
+    _request_timeout=30.0,
 )
+print(result)
+```
 
-# Agent-tier (long-lived token, agt_<8hex>_<32hex>)
-config = Configuration(
-    host="https://flyquery.example.com",
-    api_key={"X-Agent-Token": "agt_aabbccdd_eeff00112233445566778899aabbccddeeff"},
+A client timeout bounds how long the client waits. It does not provide an operating
+system sandbox or prove that server execution has stopped.
+
+## Authentication and agent routes
+
+User routes carry `X-Tenant-Id` and `X-Workspace-Id`. These headers select scope;
+they are not a substitute for deployment authentication. For bearer-protected
+routes, use `Configuration(host=url, access_token=...)` with the generated client.
+Read the deployment's [security contract](../../docs/security-model.md).
+
+Agent routes accept a separately issued `X-Agent-Token` with tenant, workspace
+and permission claims. Read the token from your secret store or environment:
+
+```python
+from flyquery_sdk.api import AgentQueryApi
+from flyquery_sdk.models import QueryRequest
+
+answer = await AgentQueryApi(api).query(
+    x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+    query_request=QueryRequest(dataset_id=UUID(dataset_id), question="How many orders?"),
+    _request_timeout=30.0,
 )
 ```
 
-Every request **must** carry `X-Tenant-Id` and `X-Workspace-Id`
-header parameters — the service uses them to bind the
-request-scoped RLS GUCs. They're explicit on every API method;
-see the per-method signatures.
+Passing `agent_token` to `FlyqueryClient` adds that header to its requests. Its
+`ask` and upload helpers still call user routes; use the generated agent classes
+when you need `/api/v1/agent/*`. Supply `idempotency_key` on mutating generated
+calls when required by your integration.
 
-For agent-tier write endpoints (uploads, derives, mutations), pass
-an `Idempotency-Key` via the `idempotency_key` kwarg — the service
-deduplicates on the (token-prefix, key) pair for 24 hours.
+## Files, batches and errors
 
-## Streaming endpoints (SSE)
+`upload_bulk` returns one outcome per file. Check `result.results` and each item's
+`status` and `error`; an HTTP success does not mean every file succeeded. The same
+rule applies to `ask_batch` and its per-question results.
 
-`/query/stream` and `/ingest-jobs/{id}/stream` are
-Server-Sent Events. The generated method returns a streaming
-response you iterate per-line:
-
-```python
-async with query.post_query_stream_with_http_info(
-    QueryRequest(dataset_id=ds.id, question="how many orders per region?"),
-    x_tenant_id="demo", x_workspace_id=ws.id,
-) as resp:
-    async for line in resp.content:
-        decoded = line.decode("utf-8").strip()
-        if decoded.startswith("event:"):
-            print("stage:", decoded[len("event:"):].strip())
-```
-
-The event sequence is documented in
-[`docs/pipeline.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/pipeline.md):
-`schema_linked → sql_generated → executed → explained → final`,
-with an optional `clarification` frame when Grounding confidence is
-below threshold.
-
-## Error handling
-
-All API methods raise `flyquery_sdk.ApiException` on non-2xx
-responses. The service emits
-[RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) ProblemDetails;
-parse `ApiException.body` (or `.data` for typed responses) to access
-the `code`, `title`, `detail`, and per-field `errors[]`.
+Generated calls and generated-backed convenience methods raise
+`flyquery_sdk.exceptions.ApiException`. HTTPX-backed helpers such as `upload` and
+`ask` raise `httpx.HTTPStatusError` for unsuccessful HTTP responses and
+`httpx.RequestError` for transport failures. Pydantic validation errors indicate a
+request or response that does not match the SDK model.
 
 ```python
+import httpx
 from flyquery_sdk.exceptions import ApiException
 
 try:
-    await workspaces.create_workspace(...)
-except ApiException as exc:
-    if exc.status == 409:
-        # Workspace slug already exists for this tenant
-        ...
-    elif exc.status == 403:
-        # Missing scope / dataset not in token allowlist
-        ...
-    else:
-        raise
+    await fly.find_or_create_dataset("orders")
+except ApiException as error:
+    print(error.status, error.body)
+
+try:
+    await fly.ask(dataset_id, "How many orders?")
+except httpx.HTTPStatusError as error:
+    print(error.response.status_code, error.response.text)
 ```
 
-Common error codes:
+`FlyqueryClient(timeout=120.0)` sets the timeout for its HTTPX helpers. Generated
+calls accept `_request_timeout` per call. Use an async context manager to close
+both connection pools. Sync helpers use `asyncio.run`; use async methods directly
+inside notebooks or other hosts with a running event loop.
 
-| Status | `code`                    | Meaning                                            |
-|--------|---------------------------|----------------------------------------------------|
-| 400    | `validation_error`        | Request body failed Pydantic validation            |
-| 401    | `unauthenticated`         | Missing/invalid token                              |
-| 403    | `scope_denied`            | Token scope insufficient for this operation        |
-| 404    | `resource_not_found`      | Dataset / table / workspace not visible under RLS  |
-| 409    | `conflict`                | Slug / name collision (per workspace)              |
-| 413    | `file_too_large`          | Upload exceeds `FLYQUERY_MAX_FILE_MB`              |
-| 507    | `workspace_quota_exceeded`| Workspace storage cap reached                      |
-| 503    | `rate_limited`            | Per-token rate limit exceeded                      |
+## Stream a response
 
-## API reference
+Use `stream_without_preload_content` to retain the response body. The returned
+wrapper contains the aiohttp response in `.response`:
 
-The 18 API classes mirror the resource families exposed by the
-service. Per-family methods cover the endpoints documented in
-[`docs/api-reference.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/api-reference.md).
+```python
+from flyquery_sdk.api import QueryApi
 
-| API class                | Resource family                  |
-|--------------------------|----------------------------------|
-| `WorkspacesApi`          | `/api/v1/workspaces`             |
-| `DatasetsApi`            | `/api/v1/datasets`               |
-| `FilesApi`               | `/api/v1/datasets/{id}/files`    |
-| `TablesApi`              | `/api/v1/tables`                 |
-| `SchemaApi`              | `/api/v1/schema-objects`         |
-| `RelationsApi`           | `/api/v1/datasets/{id}/relations`|
-| `SemanticApi`            | `/api/v1/semantic/*`             |
-| `GlossaryApi`            | `/api/v1/glossary`               |
-| `ExamplesApi`            | `/api/v1/examples`               |
-| `QueryApi`               | `/api/v1/query/*`                |
-| `ConversationsApi`       | `/api/v1/conversations`          |
-| `IngestApi`              | `/api/v1/ingest-jobs`            |
-| `SqlApi`                 | `/api/v1/sql:execute`            |
-| `AgentTokensApi`         | `/api/v1/agent-tokens`           |
-| `MetaApi`                | `/actuator/health`, `/version`   |
-| `AgentQueryApi`          | `/api/v1/agent/query/*`          |
-| `AgentSqlApi`            | `/api/v1/agent/sql:execute`      |
-| `AgentExamplesApi`       | `/api/v1/agent/examples`         |
-
-## Regenerating
-
-The SDK is auto-generated from the service's OpenAPI spec. To pull
-the latest:
-
-```bash
-# From the flyquery repo root:
-task openapi-snapshot   # writes openapi.json
-task sdk:python         # regenerates this directory
+stream = await QueryApi(api).stream_without_preload_content(
+    x_tenant_id=tenant_id,
+    x_workspace_id=workspace_id,
+    query_request=QueryRequest(dataset_id=UUID(dataset_id), question="Orders by region?"),
+    _request_timeout=120.0,
+)
+try:
+    stream.response.raise_for_status()
+    async for line in stream.response.content:
+        print(line.decode("utf-8").rstrip())
+finally:
+    stream.response.release()
 ```
 
-Hand-written files (`README.md`, `pyproject.toml`) are preserved
-across regeneration via `.openapi-generator-ignore`.
+Interpret the SSE frames described in the [query pipeline](../../docs/pipeline.md).
+`stream_with_http_info` preloads the body and is not a streaming context manager.
 
-## Development
+## Develop and verify
 
 ```bash
 cd sdks/python
 uv venv
-uv pip install -e ".[dev]"
-pytest tests/         # smoke tests
-mypy flyquery_sdk     # type-check
+uv pip install -e '.[dev]'
+uv run pytest -q tests
+uv run ruff check flyquery_sdk/client.py tests examples
+uv run ruff format --check flyquery_sdk/client.py tests examples
+uv build
 ```
 
-## License
+The test suite checks imports, typed responses and context/error handling over a
+real loopback HTTP socket. Service integration tests are separate and require
+PostgreSQL, Redis and the source-built MinIO test image. See the
+[SDK overview](../../docs/sdks.md) and [example guide](examples/README.md).
 
-Apache-2.0. See [LICENSE](LICENSE).
-
-The upstream **flyquery service** is also released under the Apache
-License 2.0; the SDK is the Apache-licensed wire-protocol client.
-
-## Links
-
-- Service repo: <https://github.com/fireflyframework/flyquery>
-- Documentation index: [`docs/README.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/README.md)
-- API reference: [`docs/api-reference.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/api-reference.md)
-- Wire payloads: [`docs/payload-reference.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/payload-reference.md)
-- Changelog: [`CHANGELOG.md`](https://github.com/fireflyframework/flyquery/blob/main/CHANGELOG.md)
+Licensed under Apache 2.0. Copyright Firefly Software Foundation.

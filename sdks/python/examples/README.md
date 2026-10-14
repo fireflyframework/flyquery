@@ -1,20 +1,28 @@
-# flyquery-sdk examples
+# Python examples
 
-Runnable scripts that exercise the [`FlyqueryClient`](../flyquery_sdk/client.py)
-ergonomic wrapper. Every script targets ``http://127.0.0.1:8520`` so
-spin up the service first:
+These scripts use the convenience client from `flyquery_sdk.client` and the
+repository's synthetic files. They write datasets and uploads to the selected
+workspace. Use a development tenant and configure ingestion and query model
+providers before running them.
+
+First follow the service [quick start](../../../QUICKSTART.md). Install the SDK
+into your own Python environment, then supply the URL and existing workspace:
 
 ```bash
-docker compose up -d postgres redis minio ollama
-uv sync
-uv run alembic upgrade head
-uv run uvicorn flyquery.main:app --host 127.0.0.1 --port 8520 &
+uv pip install -e ./sdks/python
+export FLYQUERY_URL=http://127.0.0.1:8520
+export FLYQUERY_TENANT_ID=example-tenant
+# Replace with the UUID returned when your workspace was created.
+export FLYQUERY_WORKSPACE_ID=2e5aa824-2f02-4b71-8939-098989024888
+python sdks/python/examples/01_quickstart.py
 ```
 
-| File | What it demonstrates |
-|------|----------------------|
-| `01_quickstart.py` | Idempotent workspace + dataset setup, `upload_directory` against the repo's synthetic fixtures, `ask_batch` with three NL questions. |
-| `02_bulk_ingest.py` | Bulk upload mixing valid fixtures + an intentionally malformed file — proves per-file failures surface as `BulkFileResult.status="FAILED"` + `.error` without aborting the batch. |
+| Script | What it does |
+|---|---|
+| `01_quickstart.py` | Finds or creates a dataset, uploads synthetic files and asks a batch of questions. |
+| `02_bulk_ingest.py` | Uploads valid fixtures alongside a malformed file, prints each outcome and removes its temporary fixture. |
 
-Add your own scripts under this directory; the README is the only
-file CI looks at when checking the example layout.
+Inspect per-file and per-question statuses. Model and embedding calls may incur
+provider charges; these examples are not part of the SDK's provider-free test
+suite. For setup, authentication, explicit generated API calls and errors, read
+the [Python SDK guide](../README.md).

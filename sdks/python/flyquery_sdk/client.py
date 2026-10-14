@@ -26,7 +26,7 @@ into a single ``FlyqueryClient`` that:
 * Exposes ergonomic helpers: ``upload(path)``,
   ``upload_directory(path)``, ``upload_bulk(paths)``,
   ``ask(question)``, ``ask_batch(questions)``,
-  ``find_workspace(slug)``, ``find_dataset(name)``.
+  ``find_or_create_workspace(slug)``, ``find_or_create_dataset(name)``.
 * Returns the same generated Pydantic models so callers keep full
   type safety + can drop down to the underlying ``ApiClient`` when
   they need a knob the wrapper doesn't expose.
@@ -35,7 +35,8 @@ Threading
 ---------
 The wrapper is async-first (matches the generated client). Sync
 mirrors (``upload_sync`` / ``ask_sync``) wrap ``asyncio.run`` for
-notebooks, CLIs, and tests that don't want to manage a loop.
+CLIs and tests without a running event loop. In notebooks, await
+the async methods directly.
 """
 
 from __future__ import annotations
@@ -61,6 +62,7 @@ from flyquery_sdk.api.tables_api import TablesApi
 from flyquery_sdk.api.workspaces_api import WorkspacesApi
 from flyquery_sdk.api_client import ApiClient
 from flyquery_sdk.configuration import Configuration
+from flyquery_sdk.exceptions import ApiException
 
 __all__ = ["FlyqueryClient", "BulkFileResult", "BulkUploadOutcome"]
 
@@ -85,7 +87,10 @@ class FlyqueryClient:
     """Tenant + workspace-scoped flyquery client.
 
     Construct once per ``(tenant_id, workspace_id)`` pair; reuse for
-    every call within that scope. Async-first; ``__aenter__`` /
+    every call within that scope. ``timeout`` bounds the raw HTTPX helpers;
+    generated API calls accept their own ``_request_timeout`` argument.
+    ``agent_token`` adds a header but does not switch helpers to agent routes.
+    Async-first; ``__aenter__`` /
     ``__aexit__`` close the underlying HTTP pool.
 
     Examples
@@ -94,22 +99,22 @@ class FlyqueryClient:
 
         async with FlyqueryClient(
             base_url="https://flyquery.example.com",
-            tenant_id="acme",
-            workspace_id="finance",
+            tenant_id="example-tenant",
+            workspace_id="2e5aa824-2f02-4b71-8939-098989024888",
         ) as fly:
             ds = await fly.find_or_create_dataset("orders", description="...")
-            await fly.upload(ds.id, "examples/csv/sales_orders.csv")
-            ans = await fly.ask(ds.id, "What's the total revenue?")
+            await fly.upload(str(ds.id), "examples/csv/sales_orders.csv")
+            ans = await fly.ask(str(ds.id), "What's the total revenue?")
             print(ans.sql, ans.preview)
 
     Bulk upload + batch query::
 
         async with FlyqueryClient(...) as fly:
-            outcome = await fly.upload_directory(ds.id, "examples/")
+            outcome = await fly.upload_directory(str(ds.id), "examples/")
             print(f"uploaded {outcome.succeeded}/{outcome.total_files}")
 
             batch = await fly.ask_batch(
-                ds.id,
+                str(ds.id),
                 ["Top 5 customers?", "Total revenue?", "Refund rate?"],
             )
             for r in batch.results:
@@ -132,11 +137,8 @@ class FlyqueryClient:
 
         config = Configuration(host=self._base_url)
         self._api_client = ApiClient(config)
-        # The OpenAPI generator doesn't model the tenant + workspace +
-        # agent-token headers (the server reads them out-of-band from
-        # the request rather than as declared per-route parameters),
-        # so we set them as ApiClient defaults so every generated
-        # method that calls ``api_client.call_api(...)`` carries them.
+        # Generated methods still require explicit context arguments. Defaults
+        # also carry the context when callers use the underlying ApiClient.
         self._api_client.default_headers["X-Tenant-Id"] = self._tenant_id
         self._api_client.default_headers["X-Workspace-Id"] = self._workspace_id
         if self._agent_token:
@@ -238,14 +240,26 @@ class FlyqueryClient:
         *,
         name: str | None = None,
     ) -> WorkspaceRead:
-        """Idempotent workspace lookup-or-create by slug."""
+        """Look up a workspace by slug; create only after an HTTP 404.
+
+        A concurrent creator can still produce an HTTP 409. Other failures
+        propagate without attempting a write.
+        """
         try:
-            return await self._workspaces.read_by_slug(slug=slug)
-        except Exception:  # noqa: BLE001  -- 404 -> create
+            return await self._workspaces.read_by_slug(
+                slug=slug,
+                x_tenant_id=self._tenant_id,
+                x_workspace_id=self._workspace_id,
+            )
+        except ApiException as exc:
+            if exc.status != 404:
+                raise
             from flyquery_sdk.models.workspace_create import WorkspaceCreate
 
             return await self._workspaces.create(
                 workspace_create=WorkspaceCreate(slug=slug, name=name or slug),
+                x_tenant_id=self._tenant_id,
+                x_workspace_id=self._workspace_id,
             )
 
     async def find_or_create_dataset(
@@ -254,14 +268,26 @@ class FlyqueryClient:
         *,
         description: str | None = None,
     ) -> DatasetRead:
-        """Idempotent dataset lookup-or-create by ``(workspace, name)``."""
+        """Look up a dataset by name; create only after an HTTP 404.
+
+        A concurrent creator can still produce an HTTP 409. Other failures
+        propagate without attempting a write.
+        """
         try:
-            return await self._datasets.read_by_name(name=name)
-        except Exception:  # noqa: BLE001  -- 404 -> create
+            return await self._datasets.read_by_name(
+                name=name,
+                x_tenant_id=self._tenant_id,
+                x_workspace_id=self._workspace_id,
+            )
+        except ApiException as exc:
+            if exc.status != 404:
+                raise
             from flyquery_sdk.models.dataset_create import DatasetCreate
 
             return await self._datasets.create(
                 dataset_create=DatasetCreate(name=name, description=description),
+                x_tenant_id=self._tenant_id,
+                x_workspace_id=self._workspace_id,
             )
 
     # ------------------------------------------------------------------
@@ -338,7 +364,9 @@ class FlyqueryClient:
         if not root.is_dir():
             raise NotADirectoryError(root)
         glob = "**/*" if recursive else "*"
-        paths = sorted(p for p in root.glob(glob) if p.is_file() and p.suffix.lower() in extensions)
+        paths: list[str | Path] = sorted(
+            p for p in root.glob(glob) if p.is_file() and p.suffix.lower() in extensions
+        )
         if not paths:
             raise FileNotFoundError(f"no ingestable files under {root} (extensions={extensions})")
         return await self.upload_bulk(dataset_id, paths)

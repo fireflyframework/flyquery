@@ -3,6 +3,6 @@ README.md
 pyproject.toml
 # Hand-written ergonomic wrapper -- mirror of the Java FlyqueryClient.
 flyquery_sdk/client.py
-tests/test_smoke.py
+tests/
 LICENSE
 examples/
