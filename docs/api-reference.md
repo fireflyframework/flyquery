@@ -753,11 +753,15 @@ the full pipeline completes.
 {
   "question": "Show top 10 customers by revenue last month",
   "dataset_id": "01906f2a-...",
-  "conversation_id": null,
-  "row_cap": 1000,
-  "statement_timeout_ms": 30000
+  "conversation_id": null
 }
 ```
+
+The current request accepts `question`, `dataset_id`, and optional
+`conversation_id`. Row caps use the executor's global setting; statement
+timeouts are unenforced. There are no per-request `row_cap` or
+`statement_timeout_ms` overrides. See the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 **Response** `200 OK`
 ```json
@@ -864,8 +868,7 @@ Available only when `workspace.allow_direct_sql = true`.
 ```json
 {
   "sql": "SELECT COUNT(*) FROM orders",
-  "dataset_id": "01906f2a-...",
-  "row_cap": 500
+  "dataset_id": "01906f2a-..."
 }
 ```
 
@@ -1015,7 +1018,7 @@ Source: `queries_controller.py:124` (get_query_result).
 
 Aggregates `flyquery_cost_events` into day / week / month buckets
 scoped to the caller's workspace. Consume
-[`GET /api/v1/cost-events`](#cost-events) for the raw per-call ledger;
+[`GET /api/v1/cost-events`](#get-apiv1cost-events) for the raw per-call ledger;
 this endpoint just rolls it up.
 
 **Query params**: `period` = `day` (default) | `week` | `month`,

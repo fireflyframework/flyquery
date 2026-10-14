@@ -15,8 +15,8 @@
 """TableResolver — map AST table names to their current parquet snapshot paths.
 
 Given a dataset_id and a list of unqualified table names (as reported by
-``AstClassifier``), looks up each table's active ``schema_snapshots`` row
-and returns a ``{name: absolute_parquet_path}`` dict. This dict is passed
+``AstClassifier``), looks up active registered tables and their current
+schema snapshots, and returns a ``{name: snapshot_path}`` dict. This dict is passed
 directly to ``DuckDBExecutor.execute`` as ``attached_tables``.
 
 Path construction
@@ -25,9 +25,16 @@ Path construction
   for LocalFs or ``s3://my-bucket/flyquery`` for S3).
 * ``parquet_object_key`` is the relative path stored in ``flyquery_schema_snapshots``
   (e.g. ``flyquery/ten-a/ws-id/ds-id/tables/table-id/v3.parquet``).
-* The full path is ``{object_store_base}/{parquet_object_key}`` regardless of
-  the adapter — DuckDB's S3 httpfs support makes the s3:// scheme work
-  transparently when ``duckdb_httpfs=true``.
+* The constructed path is ``{object_store_base}/{parquet_object_key}``.
+  This resolver performs metadata lookup and string construction only; it
+  does not download snapshots, stage local files, or load DuckDB extensions.
+
+The qualified executor workflow uses registered local Parquet paths with
+external access and extension autoload/install disabled. ``duckdb_httpfs``
+does not enable remote reads in that executor. A remote object-store URI
+would need a separately implemented, owned local-snapshot staging step;
+this resolver does not provide one. See ``docs/security-model.md`` under
+"SQL read boundary" for the execution policy and qualification limits.
 """
 
 from __future__ import annotations
@@ -57,12 +64,12 @@ class TableResolver:
         object_store_base: str | None = None,
         pins: dict[str, str] | None = None,
     ) -> dict[str, str]:
-        """Return a mapping of table name → absolute parquet path.
+        """Return a mapping of table name → constructed snapshot path.
 
         Tables that are active and have a current snapshot are included.
         Tables that are not found (not active, no snapshot, wrong dataset)
         are silently omitted so the caller can decide how to handle missing
-        tables (the executor will raise an error if a VIEW is missing).
+        tables (unregistered references are rejected by admission/executor checks).
 
         :param dataset_id: dataset to scope the lookup
         :param table_names: unqualified table names from the AST

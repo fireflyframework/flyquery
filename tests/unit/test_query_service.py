@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -575,3 +576,39 @@ async def test_answer_does_not_call_auto_learner_when_retries():
     # Here we test that the service passed retries correctly.
     if learner.proposals:
         assert learner.proposals[0]["retries"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_critic_cannot_replace_a_scoped_query_with_an_unregistered_native_file_read(tmp_path):
+    from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
+
+    file = tmp_path / "unregistered.csv"
+    file.write_text("evidence\nsynthetic-unregistered-file\n")
+
+    class Settings:
+        duckdb_memory_limit = "256MB"
+        default_row_cap = 100
+
+    class InitialColumnFailure(DuckDBExecutor):
+        calls = 0
+
+        async def execute(self, sql, attached_tables):
+            self.calls += 1
+            if self.calls == 1:
+                return ExecutionError(message="fixture missing column")
+            return await super().execute(sql, attached_tables)
+
+    executor = InitialColumnFailure(Settings())
+    svc = _make_service(executor=executor)
+    svc._critic_agent = _FakeAgent(
+        RefinedSql(sql=f"SELECT * FROM read_csv_auto('{file}')", reasoning="fixture rewrite", confidence=0.8)
+    )
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="fixture",
+        scopes={"flyquery.query:read"},
+    )
+    assert result.execution_status not in ("OK", "REFINED_OK")
+    assert executor.calls == 1

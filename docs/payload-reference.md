@@ -292,19 +292,19 @@ Sent to `PUT /api/v1/schema-objects/{id}`:
 {
   "question": "Show top 10 customers by revenue last month",
   "dataset_id": "01906f2a-0000-7000-a000-000000000002",
-  "conversation_id": null,
-  "row_cap": 1000,
-  "statement_timeout_ms": 30000
+  "conversation_id": null
 }
 ```
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `question` | `string` | Yes | Natural-language question |
-| `dataset_id` | `string \| null` | No | If omitted, queries across all datasets the token can access |
+| `dataset_id` | `string` | Yes | UUID of the selected dataset |
 | `conversation_id` | `string \| null` | No | For multi-turn drill-down |
-| `row_cap` | `int \| null` | No | Default `FLYQUERY_DEFAULT_ROW_CAP` (1000) |
-| `statement_timeout_ms` | `int \| null` | No | Default `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` (30000) |
+
+The current DTO has no `row_cap` or `statement_timeout_ms` fields. The
+executor uses `FLYQUERY_DEFAULT_ROW_CAP`; statement timeouts are currently
+unenforced. See the [SQL read boundary](security-model.md#sql-read-boundary).
 
 ### AnswerResponse
 

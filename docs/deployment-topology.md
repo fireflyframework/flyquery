@@ -3,8 +3,8 @@
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [Single-node (docker-compose)](#2-single-node-docker-compose)
-3. [Multi-node (separate services)](#3-multi-node-separate-services)
+2. [Single-node (docker-compose)](#2-single-node-docker-compose--dev)
+3. [Multi-node (separate services)](#3-multi-node-production--separate-services)
 4. [HA considerations](#4-ha-considerations)
 5. [Service port reference](#5-service-port-reference)
 
@@ -25,6 +25,12 @@ not run ingestion stages; it only publishes the EDA event that triggers
 the ingest worker. The retention worker doesn't run pipeline stages
 either — it polls on a fixed interval and only writes recovery /
 cleanup SQL.
+
+The storage-provider choices in these topologies describe ObjectStore
+storage and ingestion. Query execution is qualified for registered local
+Parquet snapshots accessible to the API process. Remote SQL file reads and
+extension-backed query workflows remain outside that qualification; see the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 For dev / docker-compose convenience, `flyquery worker all` runs both
 workers in a single asyncio event loop — **dev only**, production must
@@ -299,7 +305,7 @@ With `FLYQUERY_EDA_ADAPTER=redis` or `kafka`:
 | 5432 | Postgres | TCP | Internal only; not exposed externally |
 | 6379 | Redis | TCP | Internal only |
 
-Firefly OperationOS port conventions:
+Firefly Framework port conventions:
 - flycanon: 8500
 - flyradar: 8510
 - flyquery: 8520

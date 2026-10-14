@@ -1,4 +1,4 @@
-# flyquery — Integration with Firefly OperationOS
+# flyquery — Integration with Firefly Framework
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@
 
 ## 1. The three-pillar narrative
 
-Firefly OperationOS structures operational intelligence into three pillars:
+Firefly Framework structures operational intelligence into three pillars:
 
 | Service | Owns | Primary surface |
 |---------|------|----------------|
@@ -32,7 +32,7 @@ intelligence platform:
                 │                      │                       │
                 └──────────────────────┴───────────────────────┘
                                        │
-                              Firefly OperationOS
+                              Firefly Framework
                          (unified tenant/workspace model)
 ```
 

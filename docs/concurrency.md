@@ -185,46 +185,43 @@ The regression test that covers the drain-with-cancel path is in
 
 ## 5. DuckDB per-request isolation
 
-Every query that hits the DuckDB executor (`POST /query`, `POST /sql:execute`)
-creates a new in-process DuckDB connection:
+Each admitted query execution (`POST /query`, `POST /sql:execute`) creates a
+fresh in-memory DuckDB connection inside the synchronous worker body.
+The asynchronous entry point hands off the request as follows:
 
 ```python
-import duckdb
+import asyncio
 
-async def execute(self, sql, *, attached_tables, row_cap, statement_timeout_ms, memory_limit):
-    conn = duckdb.connect(":memory:", read_only=False)  # fresh per call
-    try:
-        conn.execute(f"SET memory_limit='{memory_limit}'")
-        conn.execute(f"SET threads=1")
-        for qname, parquet_key in attached_tables.items():
-            conn.execute(f"ATTACH '{parquet_key}' AS {qname} (READ_ONLY)")
-        # ... execute sql with LIMIT row_cap+1
-    finally:
-        conn.close()
+async def execute(self, sql, attached_tables, derived_tables=None):
+    return await asyncio.to_thread(
+        self._sync, sql, dict(attached_tables), dict(derived_tables or {})
+    )
 ```
 
 Properties of this design:
 
 - **No shared state.** There is no persistent DuckDB database on disk. Each
   connection starts empty.
-- **No shared ATTACH.** Tables are ATTACHed fresh per query. Two concurrent
-  queries for the same dataset attach the same Parquet files independently.
-- **Read-only mode on ingested tables.** `ATTACH ... (READ_ONLY)` prevents
-  writes to Parquet even if the AST firewall were bypassed.
-- **Memory bounded.** `SET memory_limit` caps each connection. With N
-  concurrent queries at 4 GB each, API pods need `N × 4 GB + OS overhead`
-  RAM.
+- **Per-request views.** Registered local Parquet paths become views in each
+  connection. Concurrent queries do not share view or mutable-table state.
+- **Confined file access.** Exact `allowed_paths`, disabled external access
+  and extension autoload/install, and locked configuration restrict the
+  connection. DERIVED DML writes a new scratch Parquet output and leaves the
+  original snapshot unchanged.
+- **Memory budget.** `SET memory_limit` configures each connection's budget.
+  Size API pods for concurrent query memory and process overhead; this
+  setting is not an operating-system process limit. The current executor
+  fixes `threads=2` per connection.
+
+The connection is not read-only. SQL admission and snapshot checks precede
+execution; see the [SQL read boundary](security-model.md#sql-read-boundary)
+for the full policy. The global statement-timeout setting is unenforced,
+so the SELECT row cap does not bound the time required to compute rows.
 
 **Concurrency concern:** DuckDB in-process with asyncio requires care. DuckDB
 operations are synchronous and CPU-bound. They block the asyncio event loop
-thread. flyquery runs DuckDB calls in a thread pool executor:
-
-```python
-import asyncio
-result = await asyncio.get_event_loop().run_in_executor(
-    _duckdb_thread_pool, _execute_sync, conn, sql
-)
-```
+thread. flyquery moves the synchronous execution body to a worker thread
+with `asyncio.to_thread`, as shown above.
 
 This keeps the asyncio event loop responsive for incoming requests while
 DuckDB computes.

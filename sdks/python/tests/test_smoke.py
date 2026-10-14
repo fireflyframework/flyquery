@@ -18,8 +18,9 @@ Each controller tag (workspaces, datasets, files, ...) must produce a
 dedicated API class (WorkspacesApi, DatasetsApi, FilesApi, ...) rather
 than collapsing everything into DefaultApi.
 """
-import sys
+
 import os
+import sys
 
 # Ensure the SDK package directory is on the path when running from repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -27,8 +28,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 def test_imports():
     from flyquery_sdk import ApiClient, Configuration  # noqa: F401
-    assert ApiClient
-    assert Configuration
+
+    assert isinstance(ApiClient, type)
+    assert isinstance(Configuration, type)
 
 
 def test_split_api_classes():
@@ -71,6 +73,7 @@ def test_split_api_classes():
         VersionApi,
         WorkspacesApi,
     )
+
     assert WorkspacesApi.__module__.endswith(".workspaces_api")
     assert DatasetsApi.__module__.endswith(".datasets_api")
     assert QueryApi.__module__.endswith(".query_api")
@@ -110,12 +113,14 @@ def test_no_stale_split_classes_leaked():
 
 def test_configuration_can_be_constructed():
     from flyquery_sdk import Configuration
+
     cfg = Configuration(host="http://localhost:8520")
     assert cfg.host == "http://localhost:8520"
 
 
 def test_api_client_can_be_constructed():
     from flyquery_sdk import ApiClient, Configuration
+
     cfg = Configuration(host="http://localhost:8520")
     client = ApiClient(configuration=cfg)
     assert client is not None

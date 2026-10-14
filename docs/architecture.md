@@ -16,7 +16,7 @@
 
 ## 1. System position
 
-flyquery is the third pillar of **Firefly OperationOS**, alongside flycanon
+flyquery is the third pillar of **Firefly Framework**, alongside flycanon
 (operational knowledge repository for unstructured content) and flyradar
 (operations-discovery and diagnostic intelligence).
 
@@ -44,8 +44,8 @@ flyquery's specific responsibilities:
   operator approves.
 - **Query execution** — multi-agent pipeline
   (Grounding → Generation → Executor → Critic → Explainer) gated by per-token
-  scopes, an AST firewall, row caps, statement timeouts, PII scanning, and
-  conversation-drill-down memory.
+  scopes, closed AST admission, registered snapshot paths, row caps, PII
+  scanning, and conversation-drill-down memory.
 - **Audit trail** — every upload, snapshot diff, question, candidate SQL,
   executed statement, and cost event, append-only.
 
@@ -219,9 +219,12 @@ flyquery uses a two-tier storage design:
    Backed by `LocalFs` (dev), `S3`, `GCS`, or `Azure Blob` via the `ObjectStore`
    hexagonal port. Selected by `FLYQUERY_OBJECT_STORE`.
 
-2. **DuckDB** — in-process per-request query engine. ATTACHes the Parquet
-   snapshots at query time; no persistent DuckDB database. This eliminates
-   shared mutable state between requests.
+2. **DuckDB** — in-process per-request query engine. Creates views over
+   registered local Parquet snapshots in a fresh in-memory connection.
+   Connections have exact file allowlists and locked external-access settings.
+   See the [SQL read boundary](security-model.md#sql-read-boundary) for admission
+   rules, copy-on-write, and the unenforced statement timeout. ObjectStore
+   provider support does not establish remote query support.
 
 3. **Postgres + pgvector** — metadata, schema knowledge base, relations,
    embeddings, audit, agent tokens. The single persistent transactional store.
@@ -468,17 +471,20 @@ GroundingAgent  →  GroundedContext {
                                                          merge ◄──┘
        │
        ▼
-AST classifier (sqlglot + DuckDB parse) + scope/firewall check
+AST classifier (sqlglot) + ScopeGuard
   single-statement only
-  reject DDL on uploaded tables
+  reject DDL and unknown statements
   reject INSERT/UPDATE/DELETE on uploaded tables
   reject SQL referencing tables outside dataset_allowlist
-  reject DuckDB host-touching functions except httpfs/parquet/json/arrow
+  require registered physical tables and reviewed pure function names
        │
        ▼
 DuckDB executor (in-process, per-request)
-  ATTACH Parquet snapshots as virtual tables
-  SET memory_limit, statement_timeout, LIMIT row_cap+1
+  recheck SQL and supplied registered snapshots
+  create views over registered local Parquet; exact allowed_paths
+  external access / extension autoload off; configuration locked
+  SET memory_limit; LIMIT default_row_cap+1 (SELECT)
+  statement timeout is unenforced
        │
   ┌────┴──────┐
   OK        ERROR
@@ -502,6 +508,10 @@ Recorder → flyquery_queries + audit_events + cost_events
 ```
 
 ### Query-pipeline agents
+
+Direct SQL skips the agents and uses the same admission policy with registered
+metadata in both synchronous and SSE handlers. See the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 | Agent | Output type | Notes |
 |-------|-------------|-------|
@@ -554,16 +564,14 @@ class FileReader(Protocol):
 Implementations: `csv_reader`, `excel_reader`, `json_reader`,
 `parquet_reader`, `avro_reader`, `orc_reader`, `arrow_reader`.
 
-### DialectAdapter port (DuckDB only in v0)
+### Query execution services (DuckDB)
 
-```python
-class DialectAdapter(Protocol):
-    dialect: Literal["duckdb"]
-    async def execute(self, sql, *, attached_tables, row_cap, ...) -> ExecutionResult: ...
-    async def explain(self, sql, *, attached_tables) -> ExplainPlan: ...
-    def ast_classify(self, sql) -> AstClassification: ...
-    def lint(self, sql) -> list[LintFinding]: ...
-```
+`AstClassifier` classifies SQL with sqlglot. `ScopeGuard` checks registered
+metadata and grants before `DuckDBExecutor.execute(sql, attached_tables,
+derived_tables=None)` runs the statement. The executor reads the global
+memory and row-cap settings when constructed. It does not accept a
+per-request timeout or row-cap argument. See the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 ### Other ports (shared with canon)
 

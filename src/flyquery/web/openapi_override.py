@@ -154,15 +154,15 @@ def install_openapi(
         info.setdefault(
             "contact",
             {
-                "name": "Firefly OperationOS",
-                "url": "https://github.com/firefly-operationOS/flyquery",
+                "name": "Firefly Framework",
+                "url": "https://github.com/fireflyframework/flyquery",
             },
         )
         info.setdefault(
             "license",
             {
                 "name": "Apache-2.0",
-                "url": "https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE",
+                "url": "https://github.com/fireflyframework/flyquery/blob/main/LICENSE",
             },
         )
 

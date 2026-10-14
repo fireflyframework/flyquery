@@ -40,7 +40,7 @@ from pyfly.starters.core import enable_core_stack
         "flyquery -- Operational Structured-Data Intelligence "
         "(upload-driven). Multi-tenant ingestion + Text-to-SQL "
         "over user-uploaded structured files. Part of Firefly "
-        "OperationOS."
+        "Framework."
     ),
     scan_packages=[
         "flyquery.core",  # @configuration class

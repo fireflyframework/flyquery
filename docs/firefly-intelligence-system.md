@@ -3,7 +3,7 @@
 > The combined narrative for **flycanon** (operational knowledge repository),
 > **flyradar** (operations discovery and diagnostic intelligence), and
 > **flyquery** (structured-data Text-to-SQL). These three services form the
-> intelligence backbone of Firefly OperationOS.
+> intelligence backbone of Firefly Framework.
 
 ## What these services do
 

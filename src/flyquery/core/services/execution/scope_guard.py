@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,6 +65,8 @@ class ScopeGuard:
         # 2. DDL never allowed via /query
         if classification.classification == "DDL":
             raise ScopeGuardError("DDL not allowed via /query (use internal :derive endpoint)")
+        if classification.classification == "UNKNOWN" or classification.unsupported_sql:
+            raise ScopeGuardError("unsupported SQL statement, function, or table source")
 
         # 3. DML rules
         if classification.classification in ("INSERT", "UPDATE", "DELETE"):
@@ -82,12 +85,17 @@ class ScopeGuard:
             # 4. SELECT: require read scope
             if not (scopes & {"flyquery.query:read", "flyquery.sql:execute", "*"}):
                 raise ScopeGuardError("missing flyquery.query:read scope (or flyquery.sql:execute / *)")
+            if any(
+                table_kinds_by_name.get(tbl) not in {"UPLOADED", "DERIVED"}
+                for tbl in classification.table_refs
+            ):
+                raise ScopeGuardError("SQL source is not a registered table")
 
         # 5. Dataset allowlist
         if dataset_allowlist is not None:
             for tbl in classification.table_refs:
                 ds = dataset_of_table.get(tbl)
-                if ds is not None and ds not in dataset_allowlist:
+                if ds is None or ds not in dataset_allowlist:
                     raise ScopeGuardError(
                         f"table {tbl!r} (dataset {ds!r}) is not in the caller's dataset allowlist"
                     )

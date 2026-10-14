@@ -140,10 +140,16 @@ is the canonical reference. Copy to `.env` and edit.
 |----------|---------|-------|
 | `FLYQUERY_DUCKDB_MEMORY_LIMIT` | `4GB` | Per-connection memory cap |
 | `FLYQUERY_DEFAULT_ROW_CAP` | `1000` | Default result row limit |
-| `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` | `30000` | Default query timeout (30 s) |
+| `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` | `30000` | Configuration field; currently unenforced by DuckDBExecutor |
 | `FLYQUERY_RESULT_TTL_HOURS` | `24` | Presigned URL and result object TTL |
 | `FLYQUERY_RESULT_PREVIEW_MAX_BYTES` | `131072` | Preview JSON size cap (128 KiB) |
-| `FLYQUERY_DUCKDB_HTTPFS` | `true` | Enable httpfs for cloud object storage |
+| `FLYQUERY_DUCKDB_HTTPFS` | `true` | Configuration field; does not enable httpfs in DuckDBExecutor |
+
+The qualified query workflow uses registered local Parquet with DuckDB >= 1.3.2.
+External access and extension autoload/install remain disabled; see the
+[SQL read boundary](security-model.md#sql-read-boundary). Query requests have
+no per-request row-cap or statement-timeout override, and the global timeout
+setting does not stop a long-running statement.
 
 ### Ingestion
 
@@ -314,6 +320,11 @@ logging middleware.
 
 ## 10. Object storage configuration
 
+These settings select ObjectStore adapters for stored uploads, ingestion,
+and results. Cloud storage adapter availability does not qualify cloud-backed
+SQL execution. The current query boundary is qualified for registered local
+Parquet; see the [SQL read boundary](security-model.md#sql-read-boundary).
+
 ### Local filesystem (dev)
 
 ```
@@ -451,3 +462,8 @@ The 30-day tombstone window on workspace purge allows accidental purge
 recovery. During the tombstone window, the workspace is soft-deleted (not
 queryable) but bytes are intact. Contact support to reverse a tombstone before
 the 30-day window expires.
+
+## Repository and package namespaces
+
+See [branding.md](branding.md#package-registries) for the canonical source
+URLs and the publication checks required before using the new package namespace.

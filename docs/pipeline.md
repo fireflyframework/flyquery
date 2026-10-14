@@ -273,24 +273,25 @@ GroundingAgent   →   GroundedContext {
 
         │
         ▼
-AST classifier (sqlglot + DuckDB parser double-check)
+AST classifier (sqlglot) + ScopeGuard
   Rules:
     single-statement only                         → REJECTED_BY_FIREWALL
     no DDL (CREATE/DROP/ALTER/TRUNCATE)           → REJECTED_BY_FIREWALL
     no INSERT/UPDATE/DELETE on UPLOADED tables    → REJECTED_BY_FIREWALL
     no DML on DERIVED without flyquery.derived:write → REJECTED_BY_FIREWALL
     no tables outside dataset_allowlist           → REJECTED_BY_FIREWALL
-    no DuckDB extensions other than httpfs/parquet/json/arrow → REJECTED_BY_FIREWALL
+    registered physical tables + closed pure function names required
+    file/table functions and unknown sources are rejected
 
         │
         ▼
 DuckDB executor (in-process, per-request)
-  ATTACH Parquet snapshots as virtual tables
-    (httpfs for cloud object store; local fs for dev)
+  Reclassify SQL and verify supplied registered snapshots
+  Create views over registered local Parquet; exact allowed_paths
+  Disable external access and extension autoload/install; lock configuration
   SET memory_limit = FLYQUERY_DUCKDB_MEMORY_LIMIT (default 4GB)
-  SET statement_timeout = FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS (default 30 s)
-  LIMIT row_cap+1 to detect overflow
-  Read-only mode — defence in depth against AST firewall gaps.
+  LIMIT default_row_cap+1 to detect SELECT overflow
+  Statement timeout is unenforced; connection is not read-only
 
         │
    ┌────┴──────┐
@@ -339,6 +340,12 @@ AnswerResponse / SSE final frame
   {answer, executed_sql, chart_hint, row_count, elapsed_ms,
    result_preview, result_url (presigned), snapshot_pins, query_id}
 ```
+
+Direct SQL skips the agents and uses the same policy with registered
+metadata in both synchronous and SSE handlers. Initial generated SQL and
+every Critic rewrite are checked before execution. See the
+[SQL read boundary](security-model.md#sql-read-boundary) for the local
+Parquet workflow, copy-on-write, and remaining limits.
 
 ### Query-pipeline agents
 

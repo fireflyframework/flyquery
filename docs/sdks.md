@@ -1,110 +1,89 @@
 # SDKs
 
-flyquery ships two officially-supported SDKs that are byte-equivalent
-wire-contract clients, generated from the same
-[`openapi.json`](../openapi.json) snapshot per release.
+flyquery provides Python and Java clients generated from the release's
+[OpenAPI snapshot](../openapi.json). Both include typed resource APIs and a
+handwritten convenience client for common operations.
 
-| SDK | Language | Distribution | Source |
-|-----|----------|--------------|--------|
-| `flyquery_sdk` | Python 3.9+ (asyncio) | PyPI / GitHub Release wheel | [`sdks/python/`](../sdks/python/) |
-| `flyquery-sdk` | Java 25 + Spring WebFlux | GitHub Packages (Maven) | [`sdks/java/`](../sdks/java/) |
+| Client | Runtime | Distribution | Guide |
+|---|---|---|---|
+| `flyquery_sdk` | Python 3.9+, asyncio | Wheel and source distribution on GitHub Releases | [Python SDK](../sdks/python/README.md) |
+| `flyquery-sdk` | Java 25, Spring WebFlux | GitHub Packages; release JAR assets | [Java SDK](../sdks/java/README.md) |
 
-Both SDKs are regenerated from `openapi.json` every release; the
-Python SDK additionally ships a hand-written `FlyqueryClient`
-ergonomic wrapper on top of the generated API classes.
+The Python SDK installs independently of the server. Import its convenience
+client with `from flyquery_sdk.client import FlyqueryClient`. Generated classes
+are available through `flyquery_sdk.api` and models through `flyquery_sdk.models`.
+The Java convenience client is
+[`com.firefly.flyquery.FlyqueryClient`](../sdks/java/src/main/java/com/firefly/flyquery/FlyqueryClient.java).
 
-## Capability matrix
+## Installation and versions
 
-| Capability | Python | Java |
-|------------|--------|------|
-| Workspace CRUD | ✅ generated | ✅ generated |
-| Dataset CRUD | ✅ generated | ✅ generated |
-| Single file upload | ✅ `FlyqueryClient.upload` | ✅ `FilesApi.uploadFile` |
-| **Bulk file upload** | ✅ `FlyqueryClient.upload_bulk` + `upload_directory` | ✅ raw `WebClient` against `:bulk` (snippet in README) |
-| **Async file upload** (`files:async`, new in 26.5.10) | ✅ generated `FilesApi.uploadFileAsync` | ✅ generated `FilesApi.uploadFileAsync` |
-| Single NL query | ✅ `FlyqueryClient.ask` | ✅ `QueryApi.query` |
-| **Batch NL query** | ✅ `FlyqueryClient.ask_batch` | ✅ `QueryApi.batch` |
-| Streaming SSE | ✅ `QueryApi.stream` (raw) | ✅ `QueryApi.stream` (raw) |
-| **Query history list** (new in 26.5.10) | ✅ `FlyqueryClient.recent_queries` (ergonomic) + `QueriesApi.list_queries` (raw) | ✅ `QueriesApi.listQueries` |
-| **Query detail** (new in 26.5.10) | ✅ `FlyqueryClient.get_query` (ergonomic) + `QueriesApi.get_query` (raw) | ✅ `QueriesApi.getQuery` |
-| **Query result re-download** (new in 26.5.10) | ✅ `FlyqueryClient.fetch_query_result` (ergonomic) + `QueriesApi.get_query_result` (raw) | ✅ `QueriesApi.getQueryResult` |
-| **Billing rollup** (new in 26.5.10) | ✅ `FlyqueryClient.billing_rollup` (ergonomic) + `BillingApi.rollup` (raw) | ✅ `BillingApi.rollup` |
-| **Workspace stats** (new in 26.5.10) | ✅ `FlyqueryClient.workspace_stats` (ergonomic) + `StatsApi.workspace_summary` (raw) | ✅ `StatsApi.workspaceSummary` |
-| Idempotent workspace lookup-or-create | ✅ `FlyqueryClient.find_or_create_workspace` | manual chain via `readBySlug` + `onErrorResume` |
-| Idempotent dataset lookup-or-create | ✅ `FlyqueryClient.find_or_create_dataset` | manual chain via `readByName` + `onErrorResume` |
-| Sync helpers | ✅ `_sync` mirror per async method | reactive only (block at the edge) |
-
-The Java SDK is intentionally lower-level — Spring WebFlux users
-expect to chain `Mono`s themselves and the ergonomic wrapper
-pattern adds more confusion than value in that ecosystem.
-
-The Python `FlyqueryClient` ergonomic wrapper lives at
-[`sdks/python/flyquery_sdk/client.py`](../sdks/python/flyquery_sdk/client.py).
-The Java equivalent `FlyqueryClient` lives at
-[`sdks/java/src/main/java/com/firefly/flyquery/FlyqueryClient.java`](../sdks/java/src/main/java/com/firefly/flyquery/FlyqueryClient.java)
-and wires base URL + tenant/workspace/agent-token headers into every
-Api class. For the new v1 history / billing / stats endpoints, both SDKs
-expose the generated API classes directly — see
-[consumers.md § Recipe F + G](consumers.md#recipe-f-query-history--re-download-new-in-26510)
-for end-to-end snippets.
-
-## Authentication contract
-
-Both SDKs carry the wire-level headers documented in
-[security-model.md](./security-model.md):
-
-| Header | When required |
-|--------|---------------|
-| `X-Tenant-Id` | All non-agent operations |
-| `X-Workspace-Id` | All non-agent operations |
-| `X-Agent-Token` | All `/api/v1/agent/*` operations |
-| `X-Correlation-Id` | Optional everywhere (echoed in response) |
-| `Idempotency-Key` | Optional on `POST/PUT/DELETE/PATCH` |
-
-The Python `FlyqueryClient` sets them once at construction. The Java
-`ApiClient.addDefaultHeader(...)` does the same.
-
-## Bulk endpoints
-
-Both SDKs target the same two wire-level bulk endpoints:
-
-| Wire | Verb | Body |
-|------|------|------|
-| `/api/v1/datasets/{dataset_id}/files:bulk` | POST | `multipart/form-data` with N `files` parts |
-| `/api/v1/query:batch` | POST | JSON `{queries: [{question, dataset_id}, ...]}` |
-
-Per-item failures (one bad file, one mis-grounded question) DO NOT
-abort the request — the response carries `status="OK"` or
-`status="FAILED"` + `error` per item, and aggregate
-`succeeded`/`failed`/`total` counts.
-
-## Versioning
-
-Both SDKs use the project's CalVer scheme: ``YY.M.P`` (e.g.
-`26.5.6`). The SDK version matches the service's `openapi.json`
-snapshot version at the time of regeneration. SDK consumers can
-safely pin to a CalVer prefix (e.g. ``flyquery-sdk~=26.5``) — patch
-bumps add wire-compatible methods only.
-
-## Regenerating
+Install the Python wheel from the canonical GitHub Release, rather than assuming
+that a package with the same name on PyPI is maintained by this project:
 
 ```bash
-# Refresh openapi.json from the running service
+uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.0/flyquery_sdk-26.10.0-py3-none-any.whl
+```
+
+Keep service and client versions aligned. This release uses version `26.10.0`;
+read the release notes and API snapshot before upgrading. The repository also
+retains earlier releases and their original assets.
+
+## Scope and authentication
+
+User APIs require `x_tenant_id` and `x_workspace_id` parameters. The convenience
+client supplies them for its own methods. Generated method calls require those
+arguments explicitly, even if default headers have been configured. Use a
+workspace UUID for dataset operations; keep a separate client per scope instead
+of changing private client fields.
+
+Scope headers select the tenant and workspace. Configure authentication at the
+deployment boundary and use bearer credentials for routes that require them.
+Generated agent APIs call `/api/v1/agent/*` with an issued `x_agent_token`; the
+token's permissions constrain the operation. Adding an agent-token header to a
+user-route helper does not change which route it calls. The
+[security model](security-model.md) explains token issuance and permissions.
+
+Lookup-or-create helpers fall back to creation only after a 404. Other errors
+propagate, and a concurrent creator can return a 409. For mutating operations,
+use the API's idempotency-key mechanism where appropriate.
+
+## Operations
+
+| Operation | Python entry point |
+|---|---|
+| Workspace and dataset setup | `find_or_create_workspace`, `find_or_create_dataset` |
+| File and directory uploads | `upload`, `upload_bulk`, `upload_directory` |
+| Natural-language questions | `ask`, `ask_batch`; generated `QueryApi` or `AgentQueryApi` |
+| Direct SQL against registered tables | `SqlExecuteApi`, `AgentSqlExecuteApi` |
+| Schemas and metadata | Generated `SchemaObjectsApi`, `SchemaChangesApi`, semantic and relation APIs |
+| Execution history and result downloads | `recent_queries`, `get_query`, `fetch_query_result` |
+| Audit, cost and workspace statistics | Generated resource APIs and convenience methods |
+| Streaming events | Generated `*_without_preload_content` methods; release the underlying response afterward |
+
+Bulk uploads and batch queries return per-item outcomes. Inspect those outcomes
+in addition to the HTTP status. Natural-language questions and ingestion stages
+can use configured model providers; direct SQL skips the question-generation
+pipeline and requires `allow_direct_sql` on the workspace.
+
+Python generated calls raise `ApiException`; HTTPX-backed convenience methods
+raise HTTPX transport or status exceptions. The Python guide gives examples for
+both. Its constructor timeout applies to HTTPX helpers; generated calls accept
+`_request_timeout`. A client timeout does not establish server-side execution
+cancellation or an operating system sandbox.
+
+## Regeneration and checks
+
+```bash
 uv run python scripts/openapi_snapshot.py
-
-# Regenerate the Python SDK (in-place)
 task sdk:python
-
-# Regenerate the Java SDK (in-place)
 task sdk:java
 ```
 
-The hand-written `FlyqueryClient` lives at
-[`sdks/python/flyquery_sdk/client.py`](../sdks/python/flyquery_sdk/client.py)
-and is preserved through `.openapi-generator-ignore`.
+The Python generator ignore file preserves the handwritten client, documentation,
+examples and test directory. Release metadata is kept in lockstep with the server
+and generator settings. PR CI runs the SDK's import and real-loopback HTTP tests;
+SDK publication also runs those tests before building the wheel and source
+archive. Service integration tests require their own databases and object store.
 
-## Examples
-
-* Python: [`sdks/python/examples/`](../sdks/python/examples/)
-* Java: [`sdks/java/examples/`](../sdks/java/examples/)
-* Synthetic fixtures used by the examples: [`examples/`](../examples/)
+See the [Python examples](../sdks/python/examples/README.md),
+[Java guide](../sdks/java/README.md) and [consumer recipes](consumers.md).

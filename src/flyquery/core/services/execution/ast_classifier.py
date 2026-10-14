@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +27,104 @@ from typing import Literal
 
 import sqlglot
 import sqlglot.expressions  # noqa: F401 — ensures exp alias is populated on sqlglot module
+from sqlglot.optimizer.scope import Scope, traverse_scope
+
+_PURE_FUNCTIONS = frozenset(
+    {
+        "SUM",
+        "COUNT",
+        "AVG",
+        "MIN",
+        "MAX",
+        "COUNT_IF",
+        "APPROX_DISTINCT",
+        "STDDEV",
+        "STDDEV_POP",
+        "STDDEV_SAMP",
+        "VARIANCE",
+        "VAR_POP",
+        "VAR_SAMP",
+        "MEDIAN",
+        "BOOL_AND",
+        "BOOL_OR",
+        "LOGICAL_AND",
+        "LOGICAL_OR",
+        "ANY_VALUE",
+        "COALESCE",
+        "NULLIF",
+        "CAST",
+        "TRY_CAST",
+        "CASE",
+        "IF",
+        "EXISTS",
+        "DATE_TRUNC",
+        "TIMESTAMP_TRUNC",
+        "DATE_DIFF",
+        "DATEDIFF",
+        "EXTRACT",
+        "YEAR",
+        "MONTH",
+        "DAY",
+        "DAY_OF_MONTH",
+        "DAY_OF_WEEK",
+        "DAY_OF_YEAR",
+        "WEEK",
+        "WEEK_OF_YEAR",
+        "QUARTER",
+        "TIME_TO_STR",
+        "STR_TO_TIME",
+        "CURRENT_DATE",
+        "CURRENT_TIMESTAMP",
+        "CURRENT_TIME",
+        "ABS",
+        "ROUND",
+        "FLOOR",
+        "CEIL",
+        "CEILING",
+        "POWER",
+        "POW",
+        "SQRT",
+        "LOG",
+        "LN",
+        "EXP",
+        "SIGN",
+        "GREATEST",
+        "LEAST",
+        "LOWER",
+        "UPPER",
+        "LENGTH",
+        "CHAR_LENGTH",
+        "TRIM",
+        "LTRIM",
+        "RTRIM",
+        "CONCAT",
+        "CONCAT_WS",
+        "SUBSTRING",
+        "STR_POSITION",
+        "REPLACE",
+        "REGEXP_REPLACE",
+        "REGEXP_EXTRACT",
+        "REGEXP_LIKE",
+        "SPLIT",
+        "SPLIT_PART",
+        "STARTS_WITH",
+        "ENDS_WITH",
+        "ARRAY",
+        "ARRAY_SIZE",
+        "STRUCT",
+        "STRUCT_EXTRACT",
+        "ROW_NUMBER",
+        "RANK",
+        "DENSE_RANK",
+        "LAG",
+        "LEAD",
+        "FIRST_VALUE",
+        "LAST_VALUE",
+        "NTH_VALUE",
+        "GROUP_CONCAT",
+        "STRING_AGG",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +136,7 @@ class AstClassification:
     table_refs: tuple[str, ...]  # unqualified table names referenced in the statement
     column_refs: tuple[str, ...]  # column names referenced in the statement
     has_subquery: bool
+    unsupported_sql: bool = False
 
 
 class AstClassifier:
@@ -76,25 +176,31 @@ class AstClassifier:
         # pyright does not unify with the public ``Expression`` base below.
         kind = self._kind(stmt)  # pyright: ignore[reportArgumentType]
 
-        # Collect table refs — skip anonymous subquery aliases AND
-        # CTE-defined names. sqlglot represents a reference to a CTE
-        # (``FROM base`` where ``WITH base AS (...)``) as an ``exp.Table``
-        # node, so without this filter the CTE alias leaks into
-        # ``table_refs``; the downstream bad-tables guard then flags it
-        # as a non-existent table and the (otherwise valid) query is
-        # rejected — see QueryService bad-tables set-difference.
-        cte_names = {cte.alias_or_name for cte in stmt.find_all(sqlglot.expressions.CTE) if cte.alias_or_name}
-        tables = tuple(
-            sorted(
-                {
-                    t.name
-                    for t in stmt.find_all(sqlglot.expressions.Table)
-                    if t.name and t.name not in cte_names
-                }
-            )
-        )
+        exp = sqlglot.expressions
+        try:
+            cte_refs = {
+                id(node)
+                for scope in traverse_scope(stmt)
+                for node, source in scope.selected_sources.values()
+                if isinstance(source, Scope)
+            }
+        except Exception:
+            return AstClassification("UNKNOWN", single, (), (), False, unsupported_sql=True)
+        sources = list(stmt.find_all(exp.Table))
+        tables = tuple(sorted({t.name for t in sources if t.name and id(t) not in cte_refs}))
         columns = tuple(sorted({c.name for c in stmt.find_all(sqlglot.expressions.Column) if c.name}))
         has_subquery = bool(list(stmt.find_all(sqlglot.expressions.Subquery)))
+        # Typed parser nodes can also read files; admission is by reviewed function name, never node type alone.
+        unsupported = any(
+            (function.name.upper() if isinstance(function, exp.Anonymous) else function.sql_name())
+            not in _PURE_FUNCTIONS
+            for function in stmt.find_all(exp.Func)
+        ) or any(
+            not isinstance(table.this, exp.Identifier)
+            or table.catalog
+            or (table.db and table.db.lower() != "main")
+            for table in sources
+        )
 
         return AstClassification(
             classification=kind,
@@ -102,6 +208,7 @@ class AstClassifier:
             table_refs=tables,
             column_refs=columns,
             has_subquery=has_subquery,
+            unsupported_sql=bool(unsupported),
         )
 
     @staticmethod

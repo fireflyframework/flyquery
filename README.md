@@ -1,6 +1,11 @@
 <div align="center">
 
-<img src="docs/assets/logo.png" alt="flyquery — tabular intelligence" width="520" />
+<picture>
+  <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/assets/brand/banner-dark-mobile.svg">
+  <source media="(max-width: 600px)" srcset="docs/assets/brand/banner-light-mobile.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/banner-dark.svg">
+  <img src="docs/assets/brand/banner-light.svg" alt="flyquery by Firefly" width="100%">
+</picture>
 
 ### **Tabular Intelligence**
 
@@ -25,7 +30,7 @@ JSONL, Parquet, Avro, ORC, Arrow and Feather, plus their `.gz`,
 [![OpenAPI](https://img.shields.io/badge/api-openapi%203.1-green)](docs/api-reference.md)
 [![DuckDB](https://img.shields.io/badge/query%20engine-duckdb-yellow)](docs/architecture.md)
 [![pgvector](https://img.shields.io/badge/vector--store-pgvector-336791)](docs/architecture.md)
-[![Version](https://img.shields.io/badge/version-26.6.0-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-26.10.0-green.svg)](#)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 </div>
@@ -53,7 +58,7 @@ object storage, derives a typed schema, samples + profiles each
 column, runs a PII pass, proposes joins to your other tables, and
 fits it to a long-lived knowledge base. Then you ask in English. A
 multi-agent pipeline (Grounding → Generation → Critic → Explainer)
-produces governed DuckDB SQL, runs it in a sandboxed connection
+produces governed DuckDB SQL, runs it over registered local Parquet snapshots
 under per-token scopes, returns rows + a chart hint, and keeps a
 conversation thread for drill-down.
 
@@ -91,9 +96,10 @@ supersession.
 
 **flyquery** handles **structured tabular data**. Its model is: file → typed
 schema → Parquet on object storage → DuckDB SQL via multi-agent pipeline. The
-query language is natural-language-to-SQL. The storage engine is Parquet on
-object storage queried in-process by DuckDB. The retrieval primitive is
-schema-element retrieval + table resolution + AST firewall. The user-facing
+query language is natural-language-to-SQL. ObjectStore holds the Parquet
+snapshots, with registered local snapshots queried in-process by DuckDB. The
+retrieval primitive is schema-element retrieval + table resolution + AST
+firewall. The user-facing
 concepts are datasets, tables, snapshots, examples, and metrics.
 
 The query languages, storage engines, retrieval primitives, and user-facing
@@ -206,7 +212,7 @@ curl -s -X POST http://localhost:8520/api/v1/query \
 | **Compression** | .gz, .zip, .bz2 transparently unwrapped |
 | **10-stage pipeline** | Receive → Parse → Reconcile → Sample → Profile → Relations → Describe → PII → Embed → Publish |
 | **4-agent query pipeline** | GroundingAgent → GenerationAgent → CriticAgent → ExplainerAgent |
-| **AST firewall** | sqlglot + DuckDB double-check; single-statement SELECT only on uploaded tables |
+| **AST firewall** | Closed sqlglot admission, registered table checks, and an independent executor check; exact file allowlist with external access disabled ([SQL read boundary](docs/security-model.md#sql-read-boundary)) |
 | **Schema knowledge base** | pgvector HNSW + BM25 + cross-encoder reranker |
 | **Semantic layer** | OSI/MetricFlow YAML metrics, deterministic SQL compilation |
 | **Conversation memory** | Multi-turn drill-down with snapshot pinning |
@@ -275,11 +281,14 @@ with `-m 'not llm'`.
 
 ## Architecture quick-take
 
-flyquery uses a **two-tier storage design**: Parquet on object storage (LocalFs in
-dev; S3/GCS/Azure Blob in production) queried by DuckDB in-process per request.
-Postgres stores all metadata, embeddings, relations, audit, and agent tokens.
-There is no persistent DuckDB database — every query ATTACHes Parquet snapshots
-fresh, eliminating shared mutable state between requests.
+flyquery stores Parquet through ObjectStore adapters and queries registered
+local snapshots with DuckDB in a fresh in-memory connection per request.
+Postgres stores metadata, embeddings, relations, audit, and agent tokens.
+Cloud storage and ingestion adapters are separate from the qualified local
+query workflow. The [SQL read boundary](docs/security-model.md#sql-read-boundary)
+explains the exact file allowlist, copy-on-write, and upstream authorization.
+Statement timeouts are currently unenforced; these in-process controls do not
+constitute an operating-system SQL sandbox.
 
 The **hexagonal adapter ring** means every external boundary (object store, file
 reader, vector store, PII scanner, semantic compiler, rate limiter) is a Python
@@ -292,6 +301,13 @@ Lock-step modules (`web/conventions/*`, `agent_deps.py`, `agent_token_service.py
 See [docs/architecture.md](docs/architecture.md) for the full picture.
 
 ---
+
+## Repository and identity
+
+Source, issues and release downloads are hosted under the
+[fireflyframework organization](https://github.com/fireflyframework/flyquery).
+See [identity and package registries](docs/branding.md) for banner provenance
+and the distinction between source transfers and historical package namespaces.
 
 ## License
 

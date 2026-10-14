@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../docs/assets/logo.png" alt="flyquery" width="380" />
+<img src="../docs/assets/brand/banner-light.svg" alt="flyquery" width="100%" />
 
 ### **SDKs**
 
@@ -9,7 +9,7 @@
 ---
 
 Wire-protocol clients for the
-[flyquery](https://github.com/firefly-operationOS/flyquery) Tabular
+[flyquery](https://github.com/fireflyframework/flyquery) Tabular
 Intelligence service. Both SDKs are auto-generated from the
 service's [`openapi.json`](../openapi.json) committed snapshot via
 [`openapi-generator-cli`](https://openapi-generator.tech/) and ship
