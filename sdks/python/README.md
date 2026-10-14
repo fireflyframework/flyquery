@@ -147,8 +147,17 @@ system sandbox or prove that server execution has stopped.
 
 User routes carry `X-Tenant-Id` and `X-Workspace-Id`. These headers select scope;
 they are not a substitute for deployment authentication. For bearer-protected
-routes, use `Configuration(host=url, access_token=...)` with the generated client.
-Read the deployment's [security contract](../../docs/security-model.md).
+routes, set the generated client's Authorization header explicitly:
+
+```python
+async with ApiClient(Configuration(host=url)) as api:
+    api.default_headers["Authorization"] = "Bearer " + os.environ["FLYQUERY_ACCESS_TOKEN"]
+    # Call a generated resource with its explicit tenant/workspace parameters.
+```
+
+`Configuration.access_token` alone does not add a bearer header: the current
+OpenAPI authentication schemes cover context headers and agent tokens. Read the
+deployment's [security contract](../../docs/security-model.md).
 
 Agent routes accept a separately issued `X-Agent-Token` with tenant, workspace
 and permission claims. Read the token from your secret store or environment:
