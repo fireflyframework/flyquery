@@ -434,7 +434,9 @@ class DuckDBExecutor:
             control.check()
             return ExecutionError(message=str(exc))
         finally:
-            if conn is not None:
-                control.close(conn)
-            if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            try:
+                if conn is not None:
+                    control.close(conn)
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)

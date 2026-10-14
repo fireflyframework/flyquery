@@ -256,3 +256,56 @@ async def test_cancellation_keeps_cleanup_failure_as_cause(parquet, native_conne
     assert isinstance(caught.value.__cause__, RuntimeError)
     assert "post-close cleanup" in str(caught.value.__cause__)
     assert task.cancelled() and connection.closed.is_set()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(15)
+async def test_cancelled_copy_on_write_unlinks_scratch_even_when_close_raises(
+    parquet, native_connections, monkeypatch
+):
+    from pathlib import Path
+
+    from flyquery.core.services.execution import duckdb_executor
+
+    paths = []
+    original_temp = duckdb_executor.tempfile.mkstemp
+
+    def track_temp(*args, **kwargs):
+        kwargs["dir"] = parquet.parent
+        fd, path = original_temp(*args, **kwargs)
+        paths.append(path)
+        return fd, path
+
+    monkeypatch.setattr(duckdb_executor.tempfile, "mkstemp", track_temp)
+
+    class LongSettings(Settings):
+        default_statement_timeout_ms = 10000
+
+    sql = "UPDATE orders SET id = (SELECT SUM((a.id * b.id * c.id) % 997) FROM orders a CROSS JOIN orders b CROSS JOIN orders c)"
+    before = parquet.read_bytes()
+    task = asyncio.create_task(
+        DuckDBExecutor(LongSettings()).execute(sql, {"orders": str(parquet)}, {"orders": str(parquet)})
+    )
+    while not native_connections or not native_connections[0].started.is_set():
+        await asyncio.sleep(0.001)
+    connection = native_connections[0]
+    original_close = connection.close
+
+    def close_with_failure():
+        original_close()
+        raise RuntimeError("synthetic COW post-close failure")
+
+    connection.close = close_with_failure
+    task.cancel()
+    try:
+        with pytest.raises(asyncio.CancelledError) as caught:
+            await task
+        assert isinstance(caught.value.__cause__, RuntimeError)
+        assert "COW post-close" in str(caught.value.__cause__)
+        assert task.cancelled() and connection.closed.is_set()
+        assert parquet.read_bytes() == before
+        assert paths and all(not Path(path).exists() for path in paths)
+    finally:
+        # A failing RED run must not leave its own scratch fixture behind.
+        for path in paths:
+            Path(path).unlink(missing_ok=True)
