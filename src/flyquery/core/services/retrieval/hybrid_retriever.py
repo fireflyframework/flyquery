@@ -84,8 +84,8 @@ class HybridRetriever:
         top_k_schema: int = 12,
         top_k_examples: int = 5,
         top_k_metrics: int = 8,
-    ) -> dict[str, list[Hit]]:
-        """Run full hybrid retrieval and return a bundle of hit lists.
+    ) -> dict[str, list[Hit] | list[dict[str, Any]]]:
+        """Run full hybrid retrieval and return hits with a column value catalog.
 
         :param query: natural-language question
         :param dataset_id: dataset scope for schema objects / metrics

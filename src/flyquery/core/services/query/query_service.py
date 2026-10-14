@@ -843,7 +843,7 @@ class QueryService:
             if self._needs_repair(result, chosen_sql):
                 critic_msg = self._repair_message(result, chosen_sql, ast, col_catalog)
             else:
-                critic_msg = adv_msg
+                critic_msg = adv_msg or ""
             value_hints = self._build_value_hints(chosen_sql, col_catalog, ast)
             critic_prompt = _render_critic_prompt(
                 question=question,
