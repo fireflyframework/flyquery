@@ -34,8 +34,9 @@ Firefly Framework convention (memory: `firefly_uses_calver`).
   align server, actuator, Python and Java SDK release metadata.
 
 A nonempty executed candidate is a selection heuristic, not proof that the SQL
-matches the requested entities or filters. Statement timeouts and operating
-system sandboxing remain deployment responsibilities. Remote object-store
+matches the requested entities or filters. The engine does not enforce its
+statement-timeout setting or provide an operating system sandbox. Deployment
+resource limits do not implement that missing query deadline. Remote object-store
 DuckDB reads are not qualified by the local registered-file tests. PII detection
 covers sampled and retained profile values; it is not a scan of every source row.
 
