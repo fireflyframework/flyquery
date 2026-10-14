@@ -589,6 +589,7 @@ async def test_critic_cannot_replace_a_scoped_query_with_an_unregistered_native_
     class Settings:
         duckdb_memory_limit = "256MB"
         default_row_cap = 100
+        default_statement_timeout_ms = 5000
 
     class InitialColumnFailure(DuckDBExecutor):
         calls = 0
@@ -625,6 +626,7 @@ async def test_rejected_advisory_sql_keeps_the_executed_query_and_result_togethe
     class Settings:
         duckdb_memory_limit = "256MB"
         default_row_cap = 100
+        default_statement_timeout_ms = 5000
 
     repo = _FakeQueryRepo()
     original_sql = "SELECT 7 AS value"
@@ -671,6 +673,7 @@ async def test_conversation_reuses_the_actual_first_snapshot_after_reingestion(t
     class Settings:
         duckdb_memory_limit = "256MB"
         default_row_cap = 100
+        default_statement_timeout_ms = 5000
 
     class Resolver(_TableAwareResolver):
         current = old_snapshot
@@ -752,3 +755,64 @@ async def test_admission_denial_precedes_retrieval_and_agent_calls(missing_scope
     assert receipt["candidates_json"] == []
     assert receipt["retries"] == 0
     assert receipt["error_json"]["code"] == "SCOPE_ADMISSION_DENIED"
+
+
+@pytest.mark.asyncio
+async def test_statement_timeout_is_terminal_without_critic_and_is_audited():
+    critic = _CountingAgent(RefinedSql(sql="SELECT 2", reasoning="repair", confidence=0.9))
+    repo = _FakeQueryRepo()
+    svc = _make_service(
+        executor=_FakeExecutor(ExecutionError(message="Statement deadline exceeded", sql_state="57014")),
+        critic_agent=critic,
+        query_repo=repo,
+    )
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="test",
+        scopes={"flyquery.query:read"},
+    )
+    assert result.execution_status == "FAILED"
+    assert critic.calls == 0
+    assert repo.created_queries[0]["retries"] == 0
+    assert repo.created_queries[0]["error_json"]["sql_state"] == "57014"
+
+
+@pytest.mark.asyncio
+async def test_timeout_during_advisory_repair_does_not_restore_an_earlier_success(monkeypatch):
+    class LaterTimeout:
+        calls = 0
+
+        async def execute(self, sql, attached_tables):
+            self.calls += 1
+            if self.calls == 1:
+                return ExecutionResult(rows=[{"n": 1}], columns=["n"], row_count=1, truncated=False)
+            return ExecutionError(message="Statement deadline exceeded", sql_state="57014")
+
+    repo = _FakeQueryRepo()
+    critic = _CountingAgent(
+        RefinedSql(sql="SELECT v FROM t WHERE v > 0", reasoning="advisory", confidence=0.9)
+    )
+    svc = _make_service(
+        executor=LaterTimeout(),
+        critic_agent=critic,
+        query_repo=repo,
+        candidates=_make_candidates("SELECT v FROM t"),
+        table_resolver=_TableAwareResolver(),
+    )
+
+    async def advisory(*args):
+        return "Check the selected measure"
+
+    monkeypatch.setattr(svc, "_advisory_repair", advisory)
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="test",
+        scopes={"flyquery.query:read"},
+    )
+    assert result.execution_status == "FAILED"
+    assert critic.calls == 1
+    assert repo.created_queries[0]["error_json"]["sql_state"] == "57014"

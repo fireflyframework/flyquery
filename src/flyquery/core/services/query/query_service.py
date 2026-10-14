@@ -915,7 +915,8 @@ class QueryService:
                 adv_msg = None
 
         # Restore the executed fallback when repair produces no usable result.
-        if best_ok is not None and not _is_good(result, chosen_sql):
+        terminal_timeout = isinstance(result, ExecutionError) and result.sql_state == "57014"
+        if best_ok is not None and not _is_good(result, chosen_sql) and not terminal_timeout:
             chosen_sql, result, ast = best_ok
 
         # ------------------------------------------------------------------
@@ -956,6 +957,8 @@ class QueryService:
         error_json: dict | None = None
         if isinstance(result, ExecutionError):
             error_json = {"message": result.message}
+            if result.sql_state is not None:
+                error_json["sql_state"] = result.sql_state
 
         query_id = await self._query_repo.create_query(
             tenant_id=tenant_id,
@@ -1230,7 +1233,7 @@ class QueryService:
         """A query needs repair if it errored, is degenerate, or ran to 0 rows
         while filtering on equality/IN literals (G2/G5)."""
         if isinstance(result, ExecutionError):
-            return True
+            return result.sql_state != "57014"
         if value_anchoring.is_degenerate_sql(sql):
             return True
         return bool(

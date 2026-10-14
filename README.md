@@ -287,8 +287,8 @@ Postgres stores metadata, embeddings, relations, audit, and agent tokens.
 Cloud storage and ingestion adapters are separate from the qualified local
 query workflow. The [SQL read boundary](docs/security-model.md#sql-read-boundary)
 explains the exact file allowlist, copy-on-write, and upstream authorization.
-Statement timeouts are currently unenforced; these in-process controls do not
-constitute an operating-system SQL sandbox.
+Each execution attempt has a configurable cooperative DuckDB deadline.
+These in-process controls do not constitute an operating-system SQL sandbox.
 
 The **hexagonal adapter ring** means every external boundary (object store, file
 reader, vector store, PII scanner, semantic compiler, rate limiter) is a Python

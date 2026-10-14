@@ -291,13 +291,14 @@ DuckDB executor (in-process, per-request)
   Disable external access and extension autoload/install; lock configuration
   SET memory_limit = FLYQUERY_DUCKDB_MEMORY_LIMIT (default 4GB)
   LIMIT default_row_cap+1 to detect SELECT overflow
-  Statement timeout is unenforced; connection is not read-only
+  Per-attempt cooperative deadline interrupts DuckDB; connection is not read-only
 
         │
    ┌────┴──────┐
    OK         ERROR
    │           │
-   │          CriticAgent (up to FLYQUERY_MAX_REFINE_RETRIES=2)
+   │          SQL state 57014 -> FAILED audit; no Critic
+   │          Other errors -> CriticAgent (up to FLYQUERY_MAX_REFINE_RETRIES=2)
    │           │  output: RefinedSql {sql, reasoning, confidence}
    │           │  loop back to AST check
    │           │
@@ -353,7 +354,7 @@ Parquet workflow, copy-on-write, and remaining limits.
 |-------|-------------|---------------|-------|
 | `GroundingAgent` | `GroundedContext` | `FLYQUERY_GROUNDING_MODEL` (claude-sonnet-4-6) | Iterative expansion up to `EXPAND_ITERS=2` |
 | `GenerationAgent` | `GeneratedCandidates` | `FLYQUERY_GENERATION_MODEL` (claude-sonnet-4-6) | N candidates (default 3); delta SQL when conversation active |
-| `CriticAgent` | `RefinedSql` | `FLYQUERY_CRITIC_MODEL` (claude-sonnet-4-6) | Always invoked on error; optionally on success to rank N>1 |
+| `CriticAgent` | `RefinedSql` | `FLYQUERY_CRITIC_MODEL` (claude-sonnet-4-6) | Repairs eligible SQL errors; timeout state `57014` is terminal; may reconsider an executed result |
 | `ExplainerAgent` | `ResultExplanation` | `FLYQUERY_EXPLAINER_MODEL` (claude-haiku-4-5) | Cheap model; 50-row preview input |
 
 ### SSE frames on /query/stream

@@ -262,10 +262,35 @@ upstream responsibilities. Local handler tests with repository doubles do
 not establish PostgreSQL RLS acceptance. The in-process settings provide
 defense in depth; they do not constitute an operating-system SQL sandbox.
 
-Statement timeouts are currently unenforced. `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS`
-does not interrupt DuckDB execution, and the current `QueryRequest` has no
-`statement_timeout_ms` or `row_cap` override. Result limits do not bound CPU
-time spent scanning, joining, or aggregating before rows are returned.
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` sets a positive, per-attempt deadline
+(default: 30,000 ms). It starts when the executor is called and includes the
+worker queue, connection setup, SQL, fetching rows, and copy-on-write export.
+At expiry, a watchdog calls DuckDB's native `interrupt()` on that attempt's
+connection. Monotonic checks prevent a late result or mutation from being
+returned. The executor closes the connection and removes its scratch output
+before completing. Original snapshot files remain unchanged.
+
+A timeout returns `ExecutionError` with SQL state `57014`. Direct SQL and
+SSE handlers record `FAILED` and the state in query history. The query
+orchestrator does not ask the Critic to repair a timed-out statement, and a
+timeout during repair cannot restore an earlier success as the final result.
+Candidate selection may still run other candidates under the existing finite
+candidate policy; each attempt receives its own deadline.
+
+Cancelling the asynchronous executor call interrupts only its own native
+connection, waits for that worker's cleanup, and propagates cancellation.
+Other calls use separate connections. Unexpected cleanup failures remain
+chained to the cancellation exception. If a native interruption fails, the
+watchdog retries and the timeout error retains the exception type.
+Cancelling a caller does not guarantee
+that an HTTP disconnect is forwarded by every server or streaming adapter.
+
+This is a cooperative DuckDB interruption, not a hard operating-system kill
+or an end-to-end request SLA. Native work or filesystem calls that do not
+cooperate can delay cleanup. Model generation, retrieval, object-store
+transfers, and snapshot publication outside the executor have separate
+budgets. The current `QueryRequest` has no `statement_timeout_ms` or `row_cap`
+override. Result limits alone do not bound scanning, joins, or aggregation.
 
 ObjectStore upload, ingestion, and result-storage adapters are separate from
 this query boundary. Remote object-store and extension-backed query workflows
@@ -372,7 +397,7 @@ Files exceeding the per-file cap are rejected at the upload endpoint with
 | Zip bomb | Decompressed-size check during decompression; capped at 2× the compressed size or `FLYQUERY_MAX_FILE_MB`, whichever is smaller |
 | ZIP with multiple entries | Rejected immediately with `error_code=ZIP_MULTI_ENTRY` |
 | Polyglot file (valid magic bytes for two formats) | Stage 1 verifies magic bytes match declared extension; mismatch → `FORMAT_MISMATCH` |
-| Billion-laughs JSON | Apply deployment resource limits to ingestion; DuckDB query statement timeout is unenforced (see [SQL read boundary](#sql-read-boundary)) |
+| Billion-laughs JSON | Apply deployment resource limits to ingestion; use the cooperative DuckDB deadline alongside deployment resource limits (see [SQL read boundary](#sql-read-boundary)) |
 
 ### GDPR purge
 

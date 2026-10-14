@@ -212,10 +212,13 @@ for the test role setup recipe.
 
 ### Symptom: Query fails with `execution_status=FAILED`, error contains "timeout"
 
-`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` is currently unenforced by the query
-executor, and `QueryRequest` has no per-query timeout override. Increasing
-that setting cannot fix a DuckDB execution stall. Identify the failing stage
-from the error and logs; see the [SQL read boundary](security-model.md#sql-read-boundary).
+A DuckDB deadline appears as `FAILED` with SQL state `57014` in query history.
+Inspect the plan before raising the positive per-attempt
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` setting; a higher value permits more
+execution time. It does not change provider/model timeouts or guarantee a hard
+process kill. `QueryRequest` has no per-query timeout override. Identify the
+failing stage from the error and logs; see the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 **Root cause A:** LLM API latency (Anthropic / OpenAI rate limit or slow
 response).
@@ -294,8 +297,11 @@ For repeated OOM on the same query, simplify the question or add a WHERE
 clause to scope the data.
 
 For a long-running DuckDB statement, reduce the scan or join work and inspect
-the query plan. The statement-timeout setting currently does not interrupt
-execution; the result row cap limits returned rows, not computation time.
+the query plan. `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` interrupts the native
+connection when an attempt expires. Query history records `FAILED` and SQL
+state `57014`; Critic does not repair this resource failure. Each candidate
+attempt has its own budget. The result row cap limits returned rows, not
+computation time, and cooperative interruption cannot replace process limits.
 File-source or unregistered-table rejections are expected policy failures,
 not reasons to enable httpfs or external access. See the
 [SQL read boundary](security-model.md#sql-read-boundary).

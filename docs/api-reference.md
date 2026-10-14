@@ -758,8 +758,8 @@ the full pipeline completes.
 ```
 
 The current request accepts `question`, `dataset_id`, and optional
-`conversation_id`. Row caps use the executor's global setting; statement
-timeouts are unenforced. There are no per-request `row_cap` or
+`conversation_id`. Row caps and the cooperative statement deadline use the executor's global
+settings. There are no per-request `row_cap` or
 `statement_timeout_ms` overrides. See the
 [SQL read boundary](security-model.md#sql-read-boundary).
 

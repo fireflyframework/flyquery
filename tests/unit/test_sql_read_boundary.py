@@ -66,6 +66,7 @@ def controller(tmp_path):
     settings = SimpleNamespace(
         duckdb_memory_limit="256MB",
         default_row_cap=100,
+        default_statement_timeout_ms=5000,
         object_store_base=str(tmp_path),
         result_preview_max_bytes=4096,
         result_ttl_hours=1,
@@ -118,3 +119,39 @@ async def test_unregistered_dataset_cannot_get_a_fabricated_table_registration(t
     )
     assert result.execution_status == "REJECTED_BY_FIREWALL"
     assert result.preview is None
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.asyncio
+async def test_native_statement_deadline_persists_failed_audit_without_result(tmp_path, stream):
+    from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
+
+    api, request, dataset, workspace, ctx = controller(tmp_path)
+    pq.write_table(pa.table({"id": list(range(1000))}), tmp_path / "orders.parquet")
+    api._settings.default_statement_timeout_ms = 100
+    api._executor = DuckDBExecutor(api._settings)
+    audit = []
+    original = api._query_repo.create_query
+
+    async def record(**kwargs):
+        audit.append(kwargs)
+        return await original(**kwargs)
+
+    api._query_repo.create_query = record
+    body = SqlExecuteRequest(
+        dataset_id=dataset,
+        sql=(
+            "SELECT SUM((a.id * b.id * c.id) % 997) AS n "
+            "FROM orders a CROSS JOIN orders b CROSS JOIN orders c"
+        ),
+    )
+    if stream:
+        frames = [frame async for frame in api._stream_events(ctx=ctx, workspace_id=workspace, request=body)]
+        final = json.loads(frames[-1].decode().split("data: ", 1)[1])
+        assert final["execution_status"] == "FAILED" and final["preview"] is None
+    else:
+        result = await api.execute(request, body)
+        assert result.execution_status == "FAILED" and result.preview is None
+    assert len(audit) == 1
+    assert audit[0]["execution_status"] == "FAILED"
+    assert audit[0]["error_json"]["sql_state"] == "57014"

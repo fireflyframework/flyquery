@@ -223,7 +223,7 @@ flyquery uses a two-tier storage design:
    registered local Parquet snapshots in a fresh in-memory connection.
    Connections have exact file allowlists and locked external-access settings.
    See the [SQL read boundary](security-model.md#sql-read-boundary) for admission
-   rules, copy-on-write, and the unenforced statement timeout. ObjectStore
+   rules, copy-on-write, and the cooperative per-attempt statement deadline. ObjectStore
    provider support does not establish remote query support.
 
 3. **Postgres + pgvector** — metadata, schema knowledge base, relations,
@@ -484,7 +484,7 @@ DuckDB executor (in-process, per-request)
   create views over registered local Parquet; exact allowed_paths
   external access / extension autoload off; configuration locked
   SET memory_limit; LIMIT default_row_cap+1 (SELECT)
-  statement timeout is unenforced
+  positive per-attempt deadline; native interrupt + monotonic checkpoints
        │
   ┌────┴──────┐
   OK        ERROR
@@ -517,7 +517,7 @@ metadata in both synchronous and SSE handlers. See the
 |-------|-------------|-------|
 | `GroundingAgent` | `GroundedContext` | Iterative schema expansion up to `EXPAND_ITERS=2` |
 | `GenerationAgent` | `GeneratedCandidates` | `FLYQUERY_GENERATION_CANDIDATES=3`; semantic-layer trusted over uploaded tables |
-| `CriticAgent` | `RefinedSql` | Always invoked on error; optionally on success to rank N>1 |
+| `CriticAgent` | `RefinedSql` | Repairs eligible SQL errors; timeout state `57014` is terminal; may reconsider an executed result |
 | `ExplainerAgent` | `ResultExplanation` | NL summary + chart hint; cheap model by default |
 
 All agents follow canon's `build_agent` recipe: structured `output_type`,

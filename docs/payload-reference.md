@@ -303,8 +303,8 @@ Sent to `PUT /api/v1/schema-objects/{id}`:
 | `conversation_id` | `string \| null` | No | For multi-turn drill-down |
 
 The current DTO has no `row_cap` or `statement_timeout_ms` fields. The
-executor uses `FLYQUERY_DEFAULT_ROW_CAP`; statement timeouts are currently
-unenforced. See the [SQL read boundary](security-model.md#sql-read-boundary).
+executor uses `FLYQUERY_DEFAULT_ROW_CAP` and the positive, per-attempt
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` cooperative deadline. See the [SQL read boundary](security-model.md#sql-read-boundary).
 
 ### AnswerResponse
 
