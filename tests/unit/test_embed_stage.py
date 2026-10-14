@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +29,54 @@ file focuses on the stage's per-row text shaping + the no-op contract.
 from __future__ import annotations
 
 from flyquery.core.services.ingestion.stages.embed import _build_embed_text
+
+
+def test_redacted_samples_do_not_return_through_profile_values() -> None:
+    row = {
+        "qualified_name": "people.email",
+        "pii_tag": "EMAIL_ADDRESS",
+        "sample_values_json": [],
+        "profile_json": {"top_values": [{"value": "synthetic@example.invalid", "count": 1}]},
+    }
+    text = _build_embed_text(row)
+    assert "synthetic@example.invalid" not in text
+    assert "Values:" not in text
+
+
+def test_redacted_catalog_values_and_ranges_remain_unavailable() -> None:
+    from flyquery.core.services.query.value_anchoring import coerce_profile
+
+    profile = {"top_values": [{"value": "private-id"}], "min": 17, "max": 17}
+    result = coerce_profile(profile, [])
+    assert result["values"] == []
+    assert result["min"] is None
+    assert result["max"] is None
+
+
+def test_unredacted_profile_values_remain_available() -> None:
+    from flyquery.core.services.query.value_anchoring import coerce_profile
+
+    result = coerce_profile({"top_values": [{"value": "approved-category"}]}, None)
+    assert result["values"] == ["approved-category"]
+
+
+def test_redacted_retrieval_metadata_does_not_export_the_raw_profile() -> None:
+    from flyquery.core.services.retrieval.search_index import _schema_hit
+
+    row = {
+        "id": "synthetic-column",
+        "table_id": "synthetic-table",
+        "kind": "COLUMN",
+        "qualified_name": "people.email",
+        "data_type": "VARCHAR",
+        "description": "Email address",
+        "sample_values_json": [],
+        "profile_json": {"top_values": [{"value": "synthetic@example.invalid"}]},
+    }
+    hit = _schema_hit(row, 1.0)
+    assert "synthetic@example.invalid" not in str(hit.metadata)
+    assert "synthetic@example.invalid" not in hit.text
+    assert hit.metadata["value_access"] is False
 
 
 class TestBuildEmbedText:

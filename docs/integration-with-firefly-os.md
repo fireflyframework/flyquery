@@ -197,8 +197,9 @@ enforces them at the database level.
 
 ## 5. Lock-step modules
 
-The following files are kept byte-equivalent across flycanon, flyradar,
-and flyquery. A CI gate blocks any PR that drifts.
+The source-contract gate preserves nineteen normalized historical shared
+baselines. The builder and observability module are service-specific variants
+with reviewed full-file pins; the check does not compare live canon/radar main.
 
 | Module | Purpose |
 |--------|---------|
@@ -215,13 +216,14 @@ and flyquery. A CI gate blocks any PR that drifts.
 | `web/agent_deps.py` | Agent-token FastAPI dependency |
 | `web/openapi_override.py` | OpenAPI spec customisation |
 | `core/agents/builder.py` | `build_agent` factory |
-| `core/observability/__init__.py` | `DEFAULT_MIDDLEWARE` stack |
+| `core/observability/__init__.py` | Configured provider prompt-cache policy |
 | `core/services/auth/agent_token_service.py` | Token verify logic |
 | `core/services/auth/redis_rate_limiter.py` | Redis rate limiter |
 | `web/controllers/agent_tokens_controller.py` | Token CRUD endpoints |
 
-Any bug fix in one service's lock-step module must be applied to all three.
-Use `task lockstep-check` to verify.
+Use `task lockstep` to reject drift. Do not copy changes across services
+without checking their current APIs. The [architecture guide](architecture.md#9-lock-step-modules)
+documents the two bounded variants, their provenance, and the retained baselines.
 
 ---
 

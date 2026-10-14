@@ -1,0 +1,19 @@
+# Copyright 2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
+.git
+.venv
+venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.env
+.env.*
+.local_blobs
+.local
+vendor
+sdks
+build
+dist
+*.log
+*.whl

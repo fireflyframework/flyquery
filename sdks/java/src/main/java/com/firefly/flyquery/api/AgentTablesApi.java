@@ -2,6 +2,10 @@ package com.firefly.flyquery.api;
 
 import com.firefly.flyquery.ApiClient;
 
+import com.firefly.flyquery.model.PaginatedSchemaChangeRead;
+import com.firefly.flyquery.model.PaginatedSchemaObjectRead;
+import com.firefly.flyquery.model.PaginatedSnapshotRead;
+import com.firefly.flyquery.model.PaginatedTableRead;
 import com.firefly.flyquery.model.SchemaObjectRead;
 import com.firefly.flyquery.model.TableRead;
 import java.util.UUID;
@@ -28,7 +32,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-06-01T11:28:27.907207+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-10-14T13:03:40.178870-07:00[America/Los_Angeles]", comments = "Generator version: 7.22.0")
 public class AgentTablesApi {
     private ApiClient apiClient;
 
@@ -334,6 +338,7 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedSchemaChangeRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
     private ResponseSpec listChangesRequestCreation(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
@@ -360,14 +365,16 @@ public class AgentTablesApi {
         headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
         if (xCorrelationId != null)
         headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
-        final String[] localVarAccepts = { };
+        final String[] localVarAccepts = {
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
         String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedSchemaChangeRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSchemaChangeRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/tables/{table_id}/changes", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
@@ -378,10 +385,11 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedSchemaChangeRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listChanges(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<PaginatedSchemaChangeRead> listChanges(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedSchemaChangeRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSchemaChangeRead>() {};
         return listChangesRequestCreation(tableId, xAgentToken, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
@@ -392,10 +400,11 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedSchemaChangeRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listChangesWithHttpInfo(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<ResponseEntity<PaginatedSchemaChangeRead>> listChangesWithHttpInfo(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedSchemaChangeRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSchemaChangeRead>() {};
         return listChangesRequestCreation(tableId, xAgentToken, xCorrelationId).toEntity(localVarReturnType);
     }
 
@@ -420,6 +429,7 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedSchemaObjectRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
     private ResponseSpec listObjectsRequestCreation(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
@@ -446,14 +456,16 @@ public class AgentTablesApi {
         headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
         if (xCorrelationId != null)
         headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
-        final String[] localVarAccepts = { };
+        final String[] localVarAccepts = {
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
         String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedSchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSchemaObjectRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/tables/{table_id}/objects", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
@@ -464,10 +476,11 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedSchemaObjectRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listObjects(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<PaginatedSchemaObjectRead> listObjects(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedSchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSchemaObjectRead>() {};
         return listObjectsRequestCreation(tableId, xAgentToken, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
@@ -478,10 +491,11 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedSchemaObjectRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listObjectsWithHttpInfo(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<ResponseEntity<PaginatedSchemaObjectRead>> listObjectsWithHttpInfo(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedSchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSchemaObjectRead>() {};
         return listObjectsRequestCreation(tableId, xAgentToken, xCorrelationId).toEntity(localVarReturnType);
     }
 
@@ -506,6 +520,7 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedSnapshotRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
     private ResponseSpec listSnapshotsRequestCreation(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
@@ -532,14 +547,16 @@ public class AgentTablesApi {
         headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
         if (xCorrelationId != null)
         headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
-        final String[] localVarAccepts = { };
+        final String[] localVarAccepts = {
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
         String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedSnapshotRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSnapshotRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/tables/{table_id}/snapshots", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
@@ -550,10 +567,11 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedSnapshotRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listSnapshots(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<PaginatedSnapshotRead> listSnapshots(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedSnapshotRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSnapshotRead>() {};
         return listSnapshotsRequestCreation(tableId, xAgentToken, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
@@ -564,10 +582,11 @@ public class AgentTablesApi {
      * @param tableId The tableId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedSnapshotRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listSnapshotsWithHttpInfo(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<ResponseEntity<PaginatedSnapshotRead>> listSnapshotsWithHttpInfo(@jakarta.annotation.Nonnull String tableId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedSnapshotRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSnapshotRead>() {};
         return listSnapshotsRequestCreation(tableId, xAgentToken, xCorrelationId).toEntity(localVarReturnType);
     }
 
@@ -592,6 +611,7 @@ public class AgentTablesApi {
      * @param datasetId The datasetId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedTableRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
     private ResponseSpec listTablesRequestCreation(@jakarta.annotation.Nonnull String datasetId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
@@ -618,14 +638,16 @@ public class AgentTablesApi {
         headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
         if (xCorrelationId != null)
         headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
-        final String[] localVarAccepts = { };
+        final String[] localVarAccepts = {
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
         String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedTableRead> localVarReturnType = new ParameterizedTypeReference<PaginatedTableRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/datasets/{dataset_id}/tables", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
@@ -636,10 +658,11 @@ public class AgentTablesApi {
      * @param datasetId The datasetId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedTableRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listTables(@jakarta.annotation.Nonnull String datasetId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<PaginatedTableRead> listTables(@jakarta.annotation.Nonnull String datasetId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedTableRead> localVarReturnType = new ParameterizedTypeReference<PaginatedTableRead>() {};
         return listTablesRequestCreation(datasetId, xAgentToken, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
@@ -650,10 +673,11 @@ public class AgentTablesApi {
      * @param datasetId The datasetId parameter
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedTableRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listTablesWithHttpInfo(@jakarta.annotation.Nonnull String datasetId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<ResponseEntity<PaginatedTableRead>> listTablesWithHttpInfo(@jakarta.annotation.Nonnull String datasetId, @jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedTableRead> localVarReturnType = new ParameterizedTypeReference<PaginatedTableRead>() {};
         return listTablesRequestCreation(datasetId, xAgentToken, xCorrelationId).toEntity(localVarReturnType);
     }
 
@@ -684,6 +708,7 @@ public class AgentTablesApi {
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedTableRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
     private ResponseSpec searchTablesRequestCreation(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String q, @jakarta.annotation.Nullable String name, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String kind, @jakarta.annotation.Nullable Boolean isActive, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
@@ -712,14 +737,16 @@ public class AgentTablesApi {
         headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
         if (xCorrelationId != null)
         headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
-        final String[] localVarAccepts = { };
+        final String[] localVarAccepts = {
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
         String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedTableRead> localVarReturnType = new ParameterizedTypeReference<PaginatedTableRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/tables", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
@@ -736,10 +763,11 @@ public class AgentTablesApi {
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedTableRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> searchTables(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String q, @jakarta.annotation.Nullable String name, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String kind, @jakarta.annotation.Nullable Boolean isActive, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<PaginatedTableRead> searchTables(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String q, @jakarta.annotation.Nullable String name, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String kind, @jakarta.annotation.Nullable Boolean isActive, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedTableRead> localVarReturnType = new ParameterizedTypeReference<PaginatedTableRead>() {};
         return searchTablesRequestCreation(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
@@ -756,10 +784,11 @@ public class AgentTablesApi {
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedTableRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> searchTablesWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String q, @jakarta.annotation.Nullable String name, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String kind, @jakarta.annotation.Nullable Boolean isActive, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<ResponseEntity<PaginatedTableRead>> searchTablesWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String q, @jakarta.annotation.Nullable String name, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String kind, @jakarta.annotation.Nullable Boolean isActive, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedTableRead> localVarReturnType = new ParameterizedTypeReference<PaginatedTableRead>() {};
         return searchTablesRequestCreation(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId).toEntity(localVarReturnType);
     }
 

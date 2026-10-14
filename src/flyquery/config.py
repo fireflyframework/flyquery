@@ -181,6 +181,23 @@ class FlyquerySettings(BaseSettings):
     reranker_top_n: int = 30
     query_expansion_enabled: bool = False
 
+    # Value-anchoring / grounding-quality knobs. The ingest pipeline already
+    # computes a per-column value catalogue (profile_json.top_values, min/max,
+    # distinct_estimate) + a semantic_type; these control how it is surfaced to
+    # the SQL writer at query time. All dataset-agnostic.
+    value_catalog_enabled: bool = True  # render real column values into prompts
+    value_catalog_max_values: int = 25  # distinct values shown per column
+    value_catalog_char_budget: int = 320  # char cap on the value list per column
+    value_catalog_max_columns: int = 80  # cap columns that get a value line (prompt budget)
+    entity_resolution_enabled: bool = True  # map question literals -> owning column
+    entity_resolution_max_literals: int = 8  # cap live value-scan probes per query
+    zero_row_repair_enabled: bool = True  # repair queries that run but return 0 rows
+    candidate_exec_selection: bool = True  # execute top candidates, pick a non-empty/non-degenerate one
+    synthesis_function_firewall: bool = True  # block read_csv_auto/pg_read_file/... in generated SQL
+    group_resolution_enabled: bool = True  # term -> full set of catalogued values it umbrellas
+    signed_measure_repair_enabled: bool = True  # observed-sign probe on subtractions over a signed measure
+    group_coverage_repair_enabled: bool = True  # advise when an IN-list under-covers a detected value group
+
     # PII
     pii_scanner: Literal["regex", "presidio", "disabled"] = "regex"
     pii_policy_samples: Literal["warn", "redact", "reject"] = "redact"

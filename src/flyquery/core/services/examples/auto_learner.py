@@ -28,6 +28,7 @@ class AutoLearner:
     Skips when:
     - ``retries > 0`` (query required critic refinement)
     - PII findings were detected in the result
+    - the query returned no rows (``row_count`` is 0, when provided)
 
     Called by QueryService (Phase D) after a successful execution.
     """
@@ -46,6 +47,7 @@ class AutoLearner:
         retries: int,
         pii_findings: list[Any],
         query_id: uuid.UUID,
+        row_count: int | None = None,
     ) -> None:
         """Insert a flyquery_examples row when all criteria pass.
 
@@ -57,10 +59,16 @@ class AutoLearner:
         :param retries: number of critic refinement loops (must be 0 to propose)
         :param pii_findings: any PII signals detected (must be empty to propose)
         :param query_id: UUID of the parent query record
+        :param row_count: number of rows the query returned; when provided it
+            must be > 0 to propose (a valid-but-wrong query returning 0 rows
+            would otherwise poison grounding). When ``None`` the row gate is
+            skipped to preserve behaviour for callers that do not pass it.
         """
         if retries > 0:
             return
         if pii_findings:
+            return
+        if row_count is not None and row_count <= 0:
             return
         await self._service.create(
             tenant_id,

@@ -39,6 +39,7 @@ this resolver does not provide one. See ``docs/security-model.md`` under
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import sqlalchemy as sa
@@ -61,6 +62,7 @@ class TableResolver:
         dataset_id: uuid.UUID,
         table_names: list[str],
         object_store_base: str | None = None,
+        pins: dict[str, str] | None = None,
     ) -> dict[str, str]:
         """Return a mapping of table name → constructed snapshot path.
 
@@ -72,6 +74,11 @@ class TableResolver:
         :param dataset_id: dataset to scope the lookup
         :param table_names: unqualified table names from the AST
         :param object_store_base: override for ``settings.object_store_base``
+        :param pins: optional ``{table_name: snapshot_id}`` — a follow-up
+            drill-down turn pins each table to the snapshot it resolved to
+            on the first turn, so a mid-conversation re-ingest does not
+            silently switch the answer to a newer schema. Unpinned tables
+            fall back to ``current_snapshot_id``.
         :return: ``{name: path}`` dict for all resolvable tables
         """
         if not table_names:
@@ -84,12 +91,16 @@ class TableResolver:
                 SELECT t.name, ss.parquet_object_key
                 FROM flyquery_tables t
                 JOIN flyquery_schema_snapshots ss
-                    ON ss.id = t.current_snapshot_id
+                    ON ss.table_id = t.id
+                   AND ss.id = COALESCE(
+                           (CAST(:pins AS jsonb) ->> t.name)::uuid,
+                           t.current_snapshot_id
+                       )
                 WHERE t.dataset_id = :ds
                   AND t.name = ANY(:names)
                   AND t.is_active = true
             """),
-            {"ds": dataset_id, "names": list(table_names)},
+            {"ds": dataset_id, "names": list(table_names), "pins": json.dumps(pins or {})},
         )
 
         out: dict[str, str] = {}
@@ -97,3 +108,39 @@ class TableResolver:
             key: str = r["parquet_object_key"]
             out[r["name"]] = f"{base}/{key}"
         return out
+
+    async def table_kinds_by_name(self, dataset_id: uuid.UUID, table_names: list[str]) -> dict[str, str]:
+        """Return ``{name: kind}`` for the active tables in the dataset.
+
+        Used by the firewall/bad-tables guard. Lives here (service layer)
+        rather than in a controller so the raw SQL stays out of the web tier.
+        """
+        if not table_names:
+            return {}
+        rows = await self._session.execute(
+            sa.text("""
+                SELECT name, kind FROM flyquery_tables
+                WHERE dataset_id = :ds AND name = ANY(:names) AND is_active = true
+            """),
+            {"ds": dataset_id, "names": list(table_names)},
+        )
+        return {r["name"]: r["kind"] for r in rows.mappings()}
+
+    async def current_snapshots(self, dataset_id: uuid.UUID, table_names: list[str]) -> dict[str, str]:
+        """Return ``{table_name: current_snapshot_id}`` for the given tables.
+
+        Used to record THIS turn's snapshot pins so a later drill-down turn
+        can reproduce the exact schema version it answered against.
+        """
+        if not table_names:
+            return {}
+        rows = await self._session.execute(
+            sa.text("""
+                SELECT name, current_snapshot_id
+                FROM flyquery_tables
+                WHERE dataset_id = :ds AND name = ANY(:names) AND is_active = true
+                  AND current_snapshot_id IS NOT NULL
+            """),
+            {"ds": dataset_id, "names": list(table_names)},
+        )
+        return {r["name"]: str(r["current_snapshot_id"]) for r in rows.mappings()}

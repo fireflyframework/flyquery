@@ -285,30 +285,29 @@ Implementation: [AST classifier](../src/flyquery/core/services/execution/ast_cla
 
 PII scanning has two gates:
 
-1. **Stage 4 (sample)** — samples are tested before being persisted. A column
-   that triggers a PII match at sampling time never has its values written to
-   `sample_values_json`.
-
-2. **Stage 8 (PII tag)** — the `PIIScanner` port classifies each column from
-   `(name + description + sample_values)`. Sets `pii_tag` + `pii_source`.
+1. Stage 4 checks the original sample batch before filtering values. Detection
+   applies the configured column policy and persists an empty-list denial for
+   redact/reject, including all-PII and already-tagged columns.
+2. Stage 8 classifies names, descriptions, samples and up to 100 retained profile
+   values before embedding. This also catches classified values outside the
+   sampled prefix.
 
 ### PII policies
 
-Set globally via env vars or per-dataset via `ingest_policy_json`:
+Configure policies globally or per dataset through `ingest_policy_json`:
 
-| Policy | `warn` | `redact` | `reject` |
-|--------|--------|----------|---------|
-| On PII detection | Log + continue | Purge `sample_values_json`; log | Set `is_active=false` on column; not queryable until reviewed |
+| Policy | Behavior after detection |
+|--------|--------------------------|
+| `warn` | Tag the column; retain clean sampled values. Profile values can remain available. |
+| `redact` | Store `sample_values_json=[]`; embedding and retrieval projections cannot fall back to profile values. The column remains queryable. |
+| `reject` | Store the same denial and mark the column inactive. Catalog and retrieval projections exclude it. |
 
-### Late tag flip
-
-If a human annotates `pii_tag` on a column that already has `sample_values_json`
-persisted, the samples are scrubbed in-place in the same transaction:
-
-```python
-if update.pii_tag and update.pii_tag != "NONE":
-    schema_object.sample_values_json = None
-```
+Late annotations use the same explicit denial boundary. A missing sample list
+is distinct from a denied empty list. Original files and stored profiles remain
+unchanged; these policies govern prompt and retrieval exposure, not source-data
+removal. Detection is limited to sampled or retained profile values and the
+configured scanner's capabilities. Read the [PII guide](pii.md) for scanner
+selection, disabled mode and re-ingestion.
 
 ### PII in query results
 

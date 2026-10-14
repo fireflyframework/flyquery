@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,6 +31,8 @@ from dataclasses import dataclass, field
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flyquery.core.services.query.value_anchoring import coerce_profile, semantic_role
+
 
 @dataclass(frozen=True)
 class Hit:
@@ -40,6 +43,108 @@ class Hit:
     text: str  # rendered for the reranker / grounding agent
     score: float
     metadata: dict = field(default_factory=dict)
+
+
+def _semantic_type(governance_json) -> str | None:
+    g = governance_json
+    if isinstance(g, dict):
+        return g.get("semantic_type")
+    return None
+
+
+def _original_header(governance_json) -> str | None:
+    g = governance_json
+    if not isinstance(g, dict):
+        return None
+    v = g.get("original_header")
+    if not v:
+        return None
+    s = str(v).strip()
+    # don't surface a header that is just a number (mis-detected data cell),
+    # unless it is a plausible 4-digit year.
+    try:
+        float(s.replace(",", ""))
+        if not (s.isdigit() and len(s) == 4 and 1900 <= int(s) <= 2100):
+            return None
+    except ValueError:
+        pass
+    return s or None
+
+
+def _col_value_suffix(profile_json, sample_values_json, semantic_type, *, max_values: int = 25) -> str:
+    """Compact ``[role, N distinct] values: a, b, ...`` / ``range: min..max`` suffix.
+
+    Appended to a column hit's text so (a) the lexical reranker can match a
+    question token to a stored value, and (b) the grounding agent sees the real
+    vocabulary. Dataset-agnostic.
+    """
+    prof = coerce_profile(profile_json, sample_values_json, max_values=max_values)
+    # Self-referencing hierarchy hint: when the profile stage detected that this
+    # column's values are entities drawn from another (higher-cardinality) column
+    # -- e.g. a manager column whose values are people from the employee column --
+    # surface it so the agent filters THIS column to find a person's reports/team
+    # instead of the person's own row. Surfaced even for high-cardinality columns
+    # with no listable values, because that is exactly when the agent otherwise
+    # cannot tell who reports to whom.
+    ref_col = profile_json.get("references_column") if isinstance(profile_json, dict) else None
+    ref_note = (
+        f" | HIERARCHY: holds entities from column '{ref_col}' (each row's "
+        f"manager/owner/parent); to get a person's group/team/reports filter THIS "
+        f"column to that person (case-insensitive LIKE), not their own row."
+        if ref_col
+        else ""
+    )
+    bits = []
+    role = semantic_role(semantic_type)
+    if role:
+        bits.append(role)
+    if prof["distinct"] is not None:
+        bits.append(f"{prof['distinct']} distinct")
+    head = f" [{', '.join(bits)}]" if bits else ""
+    if prof["values"]:
+        v = ", ".join(prof["values"])
+        if len(v) > 320:
+            v = v[:320].rsplit(",", 1)[0] + ", …"
+        return f"{head} values: {v}{ref_note}"
+    if prof.get("min") is not None or prof.get("max") is not None:
+        line = f"{head} range: {prof.get('min')}..{prof.get('max')}"
+        if role == "measure" and prof.get("mixed_sign"):
+            line += " SIGNED(neg+pos)"
+        return line + ref_note
+    return head + ref_note
+
+
+def _schema_hit(r, score: float) -> Hit:
+    """Build a column/table schema_object Hit with value + type metadata."""
+    kind = r.get("kind", None)
+    semantic_type = _semantic_type(r["governance_json"]) if "governance_json" in r else None
+    suffix = ""
+    samples = r.get("sample_values_json", None)
+    value_access = samples != []
+    profile = r.get("profile_json", None) if value_access else {}
+    if kind == "COLUMN":
+        suffix = _col_value_suffix(
+            profile,
+            samples,
+            semantic_type,
+        )
+    text = f"{r['qualified_name']}: {r['data_type'] or ''}\n{r['description'] or ''}{suffix}"
+    return Hit(
+        source_kind="schema_object",
+        id=r["id"],
+        text=text,
+        score=score,
+        metadata={
+            "qualified_name": r["qualified_name"],
+            "table_id": str(r["table_id"]),
+            "kind": kind,
+            "data_type": r["data_type"],
+            "semantic_type": semantic_type,
+            "profile_json": profile,
+            "sample_values_json": samples,
+            "value_access": value_access,
+        },
+    )
 
 
 class SearchIndex:
@@ -59,7 +164,8 @@ class SearchIndex:
         rows = await self._session.execute(
             sa.text(
                 """
-                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind,
+                       o.profile_json, o.sample_values_json, o.governance_json,
                        ts_rank(o.content_tsv, plainto_tsquery('english', :q)) AS score
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
@@ -71,16 +177,7 @@ class SearchIndex:
             ),
             {"q": query, "ds": dataset_id, "lim": limit},
         )
-        return [
-            Hit(
-                source_kind="schema_object",
-                id=r.id,
-                text=f"{r.qualified_name}: {r.data_type}\n{r.description or ''}",
-                score=float(r.score),
-                metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id)},
-            )
-            for r in rows.mappings()
-        ]
+        return [_schema_hit(r, float(r["score"])) for r in rows.mappings()]
 
     async def vector_schema_objects(
         self,
@@ -98,7 +195,8 @@ class SearchIndex:
         rows = await self._session.execute(
             sa.text(
                 """
-                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind,
+                       o.profile_json, o.sample_values_json, o.governance_json,
                        1 - (o.embedding <=> CAST(:emb AS vector)) AS score
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
@@ -109,16 +207,7 @@ class SearchIndex:
             ),
             {"emb": str(query_embedding), "ds": dataset_id, "lim": limit},
         )
-        return [
-            Hit(
-                source_kind="schema_object",
-                id=r.id,
-                text=f"{r.qualified_name}: {r.data_type}\n{r.description or ''}",
-                score=float(r.score),
-                metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id)},
-            )
-            for r in rows.mappings()
-        ]
+        return [_schema_hit(r, float(r["score"])) for r in rows.mappings()]
 
     async def all_schema_objects(
         self,
@@ -175,7 +264,8 @@ class SearchIndex:
                 await self._session.execute(
                     sa.text(
                         """
-                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind,
+                       o.profile_json, o.sample_values_json, o.governance_json
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
                 WHERE t.dataset_id = :ds AND o.is_active = true AND o.kind = 'COLUMN'
@@ -223,20 +313,58 @@ class SearchIndex:
             )
 
         for r in column_rows:
-            hits.append(
-                Hit(
-                    source_kind="schema_object",
-                    id=r["id"],
-                    text=f"{r['qualified_name']}: {r['data_type'] or ''}\n{r['description'] or ''}",
-                    score=1.0,
-                    metadata={
-                        "qualified_name": r["qualified_name"],
-                        "table_id": str(r["table_id"]),
-                        "kind": "COLUMN",
-                    },
+            hits.append(_schema_hit(r, 1.0))
+        return hits
+
+    async def column_value_catalog(self, dataset_id: uuid.UUID, *, limit: int = 2000) -> list[dict]:
+        """Return every column's value catalogue for the dataset.
+
+        Used (a) to resolve question literals to the columns that store them
+        and (b) to render a complete, value-anchored column list per in-scope
+        table. Each item: ``{qualified_name, table_id, data_type, semantic_type,
+        distinct, values, min, max}``. Dataset-agnostic — reads only the
+        ingest-computed ``profile_json`` / ``sample_values_json`` /
+        ``governance_json``.
+        """
+        rows = (
+            (
+                await self._session.execute(
+                    sa.text(
+                        """
+                        SELECT o.qualified_name, o.data_type, o.table_id,
+                               o.profile_json, o.sample_values_json, o.governance_json
+                        FROM flyquery_schema_objects o
+                        JOIN flyquery_tables t ON t.id = o.table_id
+                        WHERE t.dataset_id = :ds AND o.is_active = true AND o.kind = 'COLUMN'
+                        ORDER BY o.qualified_name
+                        LIMIT :lim
+                        """
+                    ),
+                    {"ds": dataset_id, "lim": limit},
                 )
             )
-        return hits
+            .mappings()
+            .all()
+        )
+        out: list[dict] = []
+        for r in rows:
+            prof = coerce_profile(r["profile_json"], r["sample_values_json"], max_values=40)
+            out.append(
+                {
+                    "qualified_name": r["qualified_name"],
+                    "table_id": str(r["table_id"]),
+                    "data_type": r["data_type"],
+                    "semantic_type": _semantic_type(r["governance_json"]),
+                    "distinct": prof["distinct"],
+                    "values": prof["values"],
+                    "min": prof["min"],
+                    "max": prof["max"],
+                    "mixed_sign": prof["mixed_sign"],
+                    "value_access": r["sample_values_json"] != [],
+                    "original_header": _original_header(r["governance_json"]),
+                }
+            )
+        return out
 
     async def approved_examples(
         self,
@@ -274,7 +402,7 @@ class SearchIndex:
                                ELSE 0.5
                            END AS score
                     FROM flyquery_examples
-                    WHERE workspace_id = :workspace_id AND quality = 'APPROVED' {ds_filter}
+                    WHERE workspace_id = :workspace_id AND quality IN ('APPROVED', 'PROPOSED') {ds_filter}
                     ORDER BY score DESC
                     LIMIT :lim
                     """
@@ -288,7 +416,7 @@ class SearchIndex:
                     SELECT id, question, generated_sql,
                            0.5 AS score
                     FROM flyquery_examples
-                    WHERE workspace_id = :workspace_id AND quality = 'APPROVED' {ds_filter}
+                    WHERE workspace_id = :workspace_id AND quality IN ('APPROVED', 'PROPOSED') {ds_filter}
                     ORDER BY created_at DESC
                     LIMIT :lim
                     """

@@ -255,22 +255,15 @@ ANTHROPIC_API_KEY=<key> uv run pytest tests/integration/ -m llm --tb=short -q
 
 ## 8. Lock-step drift CI gate
 
-`scripts/check_lockstep.py` verifies that all files in the lock-step set
-(see [architecture.md § Lock-step modules](architecture.md#9-lock-step-modules))
-are byte-equivalent with the pinned SHAs of flycanon and flyradar.
+`scripts/check_lockstep.py` checks nineteen normalized historical baselines
+and two reviewed service-specific variants. It does not compare live canon
+or radar repositories. See the [source-contract scope](architecture.md#9-lock-step-modules)
+for the manifest and provenance.
 
 ```bash
 # Run manually
-python scripts/check_lockstep.py --verbose
-# → OK: web/conventions/middleware.py (matches flycanon sha abc123)
-# → DRIFT: web/conventions/errors.py (differs from flycanon sha def456)
-#   +++ 42c42
-#   - old line
-#   + new line
-
-# In CI
-FLYCANON_REF=$FLYCANON_PINNED_SHA python scripts/check_lockstep.py
-# Exit 1 if any file drifts
+python scripts/check_lockstep.py
+# Exit 1 on source drift or an invalid variant manifest.
 ```
 
 See [cicd.md](cicd.md) for the workflow configuration.

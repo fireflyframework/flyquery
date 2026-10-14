@@ -223,30 +223,29 @@ Apache-2.0 license.
 
 ## 5. Workflow: Lock-step check
 
-Runs on every PR and push to `main`. Blocks if any lock-step module in flyquery
-has drifted from its pinned SHA in flycanon or flyradar.
+The `lockstep-check` job in `pr-gate.yaml` checks the local source contracts
+for PRs and main pushes selected by that workflow's path filters.
 
 ```yaml
-# .github/workflows/lockstep-check.yml (structure)
+# .github/workflows/pr-gate.yaml (source-contract job)
 
 jobs:
-  lockstep:
+  lockstep-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: uv run python scripts/check_lockstep.py
-        env:
-          FLYCANON_REF: ${{ vars.FLYCANON_PINNED_SHA }}
-          FLYRADAR_REF: ${{ vars.FLYRADAR_PINNED_SHA }}
+      - run: python scripts/check_lockstep.py
 ```
 
 The script checks:
-1. Fetches the pinned SHA of flycanon and flyradar from GitHub vars.
-2. Downloads the lock-step files from those SHAs.
-3. Diffs byte-by-byte against flyquery's copies.
-4. Exits non-zero if any file drifts.
+1. Loads the nineteen retained historical normalized baseline pins.
+2. Validates the versioned manifest for the two allowed service variants.
+3. Checks normalized baseline hashes or exact full-file variant hashes.
+4. Exits nonzero on drift, missing files, invalid metadata, or unknown exceptions.
+
+It makes no remote calls and does not imply parity with current canon/radar
+main. The [architecture guide](architecture.md#9-lock-step-modules) records
+the service-specific boundary and canonical source reference.
 
 Fixing a lock-step drift: see
 [troubleshooting.md § 12](troubleshooting.md#12-lock-step-drift-ci-failure).

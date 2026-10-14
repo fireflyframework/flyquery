@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import uuid
 from dataclasses import dataclass
 from typing import Any, cast
@@ -39,6 +40,47 @@ from flyquery.core.services.storage.jsonb_normalize import (
     normalize_governance_json,
     normalize_synonyms_json,
 )
+
+_SYNTHETIC_HEADER = re.compile(r"(?i)^(column|col|unnamed|field|sheet)[\s_:.\-]*\d*$")
+
+
+def _plausible_original_header(name: str | None) -> str | None:
+    """Return a real source header worth preserving, else None.
+
+    Keeps meaningful headers (incl. plain years like '2024') but drops synthetic
+    placeholders (column5, Unnamed: 0) and obvious null tokens, so the surfaced
+    'original header' is signal, not noise. Fully generic.
+    """
+    if not name:
+        return None
+    s = str(name).strip()
+    if not s or len(s) > 60:
+        return None
+    if _SYNTHETIC_HEADER.match(s):
+        return None
+    if s.lower() in {"none", "null", "nan", "n/a", "na", "-"}:
+        return None
+    # A header that is just a number is almost certainly a mis-detected data cell;
+    # skip it -- UNLESS it is a plausible 4-digit year (a real period header).
+    try:
+        float(s.replace(",", ""))
+        if not (s.isdigit() and len(s) == 4 and 1900 <= int(s) <= 2100):
+            return None
+    except ValueError:
+        pass  # non-numeric header -> keep
+    return s
+
+
+def _governance_with_header(annotation: dict, col: Any) -> str:
+    """Serialise governance_json, merging the column's plausible original header."""
+    gov = normalize_governance_json(annotation.get("governance_json"))
+    if not isinstance(gov, dict):
+        gov = {}
+    oh = _plausible_original_header(getattr(col, "original_name", None))
+    if oh and not gov.get("original_header"):
+        gov = {**gov, "original_header": oh}
+    return json.dumps(gov)
+
 
 # Rename auto-confirm threshold (passed from settings when available)
 _DEFAULT_AUTO_CONFIRM_THRESHOLD = 0.8
@@ -281,9 +323,9 @@ async def run_reconcile(
                     "pii_tag": annotation.get("pii_tag"),
                     "pii_source": annotation.get("pii_source"),
                     "business_owner": annotation.get("business_owner"),
-                    "governance_json": json.dumps(
-                        normalize_governance_json(annotation.get("governance_json"))
-                    ),
+                    # round-2 #3: preserve the source's original header (pre-rename)
+                    # so the query layer knows what e.g. year_1 actually was.
+                    "governance_json": _governance_with_header(annotation, col),
                 },
             )
 

@@ -244,44 +244,35 @@ public class Example {
 
 ## listChanges
 
-> listChanges(tableId, xAgentToken, xCorrelationId)
+> Mono<PaginatedSchemaChangeRead> listChanges(tableId, xAgentToken, xCorrelationId)
 
 
 
 ### Example
 
 ```java
-// Import classes:
+import java.time.Duration;
 import com.firefly.flyquery.ApiClient;
-import com.firefly.flyquery.ApiException;
-import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
-import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentTablesApi;
+import com.firefly.flyquery.model.PaginatedSchemaChangeRead;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 public class Example {
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
-
-        AgentTablesApi apiInstance = new AgentTablesApi(defaultClient);
-        String tableId = "tableId_example"; // String | 
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        ApiClient client = new ApiClient();
+        client.setBasePath(System.getenv("FLYQUERY_URL"));
+        client.addDefaultHeader("X-Tenant-Id", System.getenv("FLYQUERY_TENANT_ID"));
+        client.addDefaultHeader("X-Workspace-Id", System.getenv("FLYQUERY_WORKSPACE_ID"));
+        AgentTablesApi api = new AgentTablesApi(client);
+        String token = System.getenv("FLYQUERY_AGENT_TOKEN");
+        String tableId = System.getenv("FLYQUERY_TABLE_ID");
         try {
-            apiInstance.listChanges(tableId, xAgentToken, xCorrelationId);
-        } catch (ApiException e) {
-            System.err.println("Exception when calling AgentTablesApi#listChanges");
-            System.err.println("Status code: " + e.getCode());
-            System.err.println("Reason: " + e.getResponseBody());
-            System.err.println("Response headers: " + e.getResponseHeaders());
-            e.printStackTrace();
+            PaginatedSchemaChangeRead page = api.listChanges(tableId, token, null).block(Duration.ofSeconds(15));
+            if (page == null) throw new IllegalStateException("The API returned no page");
+            System.out.println(page.getItems());
+        } catch (WebClientResponseException e) {
+            System.err.println("HTTP " + e.getStatusCode());
+            throw e;
         }
     }
 }
@@ -298,7 +289,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedSchemaChangeRead**](PaginatedSchemaChangeRead.md)
 
 ### Authorization
 
@@ -307,7 +298,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -318,44 +309,35 @@ null (empty response body)
 
 ## listObjects
 
-> listObjects(tableId, xAgentToken, xCorrelationId)
+> Mono<PaginatedSchemaObjectRead> listObjects(tableId, xAgentToken, xCorrelationId)
 
 
 
 ### Example
 
 ```java
-// Import classes:
+import java.time.Duration;
 import com.firefly.flyquery.ApiClient;
-import com.firefly.flyquery.ApiException;
-import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
-import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentTablesApi;
+import com.firefly.flyquery.model.PaginatedSchemaObjectRead;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 public class Example {
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
-
-        AgentTablesApi apiInstance = new AgentTablesApi(defaultClient);
-        String tableId = "tableId_example"; // String | 
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        ApiClient client = new ApiClient();
+        client.setBasePath(System.getenv("FLYQUERY_URL"));
+        client.addDefaultHeader("X-Tenant-Id", System.getenv("FLYQUERY_TENANT_ID"));
+        client.addDefaultHeader("X-Workspace-Id", System.getenv("FLYQUERY_WORKSPACE_ID"));
+        AgentTablesApi api = new AgentTablesApi(client);
+        String token = System.getenv("FLYQUERY_AGENT_TOKEN");
+        String tableId = System.getenv("FLYQUERY_TABLE_ID");
         try {
-            apiInstance.listObjects(tableId, xAgentToken, xCorrelationId);
-        } catch (ApiException e) {
-            System.err.println("Exception when calling AgentTablesApi#listObjects");
-            System.err.println("Status code: " + e.getCode());
-            System.err.println("Reason: " + e.getResponseBody());
-            System.err.println("Response headers: " + e.getResponseHeaders());
-            e.printStackTrace();
+            PaginatedSchemaObjectRead page = api.listObjects(tableId, token, null).block(Duration.ofSeconds(15));
+            if (page == null) throw new IllegalStateException("The API returned no page");
+            System.out.println(page.getItems());
+        } catch (WebClientResponseException e) {
+            System.err.println("HTTP " + e.getStatusCode());
+            throw e;
         }
     }
 }
@@ -372,7 +354,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedSchemaObjectRead**](PaginatedSchemaObjectRead.md)
 
 ### Authorization
 
@@ -381,7 +363,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -392,44 +374,35 @@ null (empty response body)
 
 ## listSnapshots
 
-> listSnapshots(tableId, xAgentToken, xCorrelationId)
+> Mono<PaginatedSnapshotRead> listSnapshots(tableId, xAgentToken, xCorrelationId)
 
 
 
 ### Example
 
 ```java
-// Import classes:
+import java.time.Duration;
 import com.firefly.flyquery.ApiClient;
-import com.firefly.flyquery.ApiException;
-import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
-import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentTablesApi;
+import com.firefly.flyquery.model.PaginatedSnapshotRead;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 public class Example {
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
-
-        AgentTablesApi apiInstance = new AgentTablesApi(defaultClient);
-        String tableId = "tableId_example"; // String | 
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        ApiClient client = new ApiClient();
+        client.setBasePath(System.getenv("FLYQUERY_URL"));
+        client.addDefaultHeader("X-Tenant-Id", System.getenv("FLYQUERY_TENANT_ID"));
+        client.addDefaultHeader("X-Workspace-Id", System.getenv("FLYQUERY_WORKSPACE_ID"));
+        AgentTablesApi api = new AgentTablesApi(client);
+        String token = System.getenv("FLYQUERY_AGENT_TOKEN");
+        String tableId = System.getenv("FLYQUERY_TABLE_ID");
         try {
-            apiInstance.listSnapshots(tableId, xAgentToken, xCorrelationId);
-        } catch (ApiException e) {
-            System.err.println("Exception when calling AgentTablesApi#listSnapshots");
-            System.err.println("Status code: " + e.getCode());
-            System.err.println("Reason: " + e.getResponseBody());
-            System.err.println("Response headers: " + e.getResponseHeaders());
-            e.printStackTrace();
+            PaginatedSnapshotRead page = api.listSnapshots(tableId, token, null).block(Duration.ofSeconds(15));
+            if (page == null) throw new IllegalStateException("The API returned no page");
+            System.out.println(page.getItems());
+        } catch (WebClientResponseException e) {
+            System.err.println("HTTP " + e.getStatusCode());
+            throw e;
         }
     }
 }
@@ -446,7 +419,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedSnapshotRead**](PaginatedSnapshotRead.md)
 
 ### Authorization
 
@@ -455,7 +428,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -466,44 +439,35 @@ null (empty response body)
 
 ## listTables
 
-> listTables(datasetId, xAgentToken, xCorrelationId)
+> Mono<PaginatedTableRead> listTables(datasetId, xAgentToken, xCorrelationId)
 
 
 
 ### Example
 
 ```java
-// Import classes:
+import java.time.Duration;
 import com.firefly.flyquery.ApiClient;
-import com.firefly.flyquery.ApiException;
-import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
-import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentTablesApi;
+import com.firefly.flyquery.model.PaginatedTableRead;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 public class Example {
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
-
-        AgentTablesApi apiInstance = new AgentTablesApi(defaultClient);
-        String datasetId = "datasetId_example"; // String | 
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        ApiClient client = new ApiClient();
+        client.setBasePath(System.getenv("FLYQUERY_URL"));
+        client.addDefaultHeader("X-Tenant-Id", System.getenv("FLYQUERY_TENANT_ID"));
+        client.addDefaultHeader("X-Workspace-Id", System.getenv("FLYQUERY_WORKSPACE_ID"));
+        AgentTablesApi api = new AgentTablesApi(client);
+        String token = System.getenv("FLYQUERY_AGENT_TOKEN");
+        String datasetId = System.getenv("FLYQUERY_DATASET_ID");
         try {
-            apiInstance.listTables(datasetId, xAgentToken, xCorrelationId);
-        } catch (ApiException e) {
-            System.err.println("Exception when calling AgentTablesApi#listTables");
-            System.err.println("Status code: " + e.getCode());
-            System.err.println("Reason: " + e.getResponseBody());
-            System.err.println("Response headers: " + e.getResponseHeaders());
-            e.printStackTrace();
+            PaginatedTableRead page = api.listTables(datasetId, token, null).block(Duration.ofSeconds(15));
+            if (page == null) throw new IllegalStateException("The API returned no page");
+            System.out.println(page.getItems());
+        } catch (WebClientResponseException e) {
+            System.err.println("HTTP " + e.getStatusCode());
+            throw e;
         }
     }
 }
@@ -520,7 +484,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -529,7 +493,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -540,50 +504,35 @@ null (empty response body)
 
 ## searchTables
 
-> searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId)
+> Mono<PaginatedTableRead> searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId)
 
 
 
 ### Example
 
 ```java
-// Import classes:
+import java.time.Duration;
 import com.firefly.flyquery.ApiClient;
-import com.firefly.flyquery.ApiException;
-import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
-import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentTablesApi;
+import com.firefly.flyquery.model.PaginatedTableRead;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 public class Example {
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
-
-        AgentTablesApi apiInstance = new AgentTablesApi(defaultClient);
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-        String q = "q_example"; // String | 
-        String name = "name_example"; // String | 
-        String datasetId = "datasetId_example"; // String | 
-        String kind = "kind_example"; // String | 
-        Boolean isActive = null; // Boolean | 
-        Integer limit = 100; // Integer | 
-        Integer offset = 0; // Integer | 
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        ApiClient client = new ApiClient();
+        client.setBasePath(System.getenv("FLYQUERY_URL"));
+        client.addDefaultHeader("X-Tenant-Id", System.getenv("FLYQUERY_TENANT_ID"));
+        client.addDefaultHeader("X-Workspace-Id", System.getenv("FLYQUERY_WORKSPACE_ID"));
+        AgentTablesApi api = new AgentTablesApi(client);
+        String token = System.getenv("FLYQUERY_AGENT_TOKEN");
+        String datasetId = System.getenv("FLYQUERY_DATASET_ID");
         try {
-            apiInstance.searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId);
-        } catch (ApiException e) {
-            System.err.println("Exception when calling AgentTablesApi#searchTables");
-            System.err.println("Status code: " + e.getCode());
-            System.err.println("Reason: " + e.getResponseBody());
-            System.err.println("Response headers: " + e.getResponseHeaders());
-            e.printStackTrace();
+            PaginatedTableRead page = api.searchTables(token, null, null, datasetId, null, true, 100, 0, null).block(Duration.ofSeconds(15));
+            if (page == null) throw new IllegalStateException("The API returned no page");
+            System.out.println(page.getItems());
+        } catch (WebClientResponseException e) {
+            System.err.println("HTTP " + e.getStatusCode());
+            throw e;
         }
     }
 }
@@ -606,7 +555,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -615,7 +564,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details

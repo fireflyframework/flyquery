@@ -78,6 +78,14 @@ async def _seed_table_with_column(
         ),
         {"id": snap_id, "t": tenant, "ws": ws_id, "ds": ds_id, "tbl": tbl_id, "hash": "testhash"},
     )
+    # Publish: point the table at this snapshot. Retrieval is scoped to
+    # ``current_snapshot_id`` (so re-ingests don't return stale/duplicate
+    # columns), so a seeded table must have its current snapshot set -- exactly
+    # as the publish stage does in real ingestion.
+    await s.execute(
+        sa.text("UPDATE flyquery_tables SET current_snapshot_id = :snap WHERE id = :tbl"),
+        {"snap": snap_id, "tbl": tbl_id},
+    )
     if embedding is not None:
         vec = str(embedding)
         await s.execute(

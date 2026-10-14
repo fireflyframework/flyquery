@@ -587,9 +587,17 @@ per-request timeout or row-cap argument. See the
 
 ## 9. Lock-step modules
 
-The following files are kept byte-equivalent with flycanon and flyradar.
-`scripts/check_lockstep.py` diffs them against pinned SHAs in CI; PRs are
-blocked on mismatch.
+`scripts/check_lockstep.py` checks 21 local source contracts. Nineteen retain
+their normalized historical shared-baseline hashes in
+`scripts/lockstep_pins.json`. These pins protect against accidental drift;
+the script does not download or compare current canon/radar source.
+
+Two paths are reviewed service-specific variants: `core/agents/builder.py`
+and `core/observability/__init__.py`. Their complete file bytes are pinned in
+`scripts/lockstep_variants.v1.json`, with a reason and canonical source
+reference. At canon revision `aa2486ac98bf2bb92f0187ac30ca80900fae8abd`,
+the factory has its own Azure resolver and there is no generic observability
+module. Preserving those differences avoids asserting false full-file parity.
 
 ```
 src/flyquery/web/agent_deps.py                    (~3.7 KB)
@@ -612,6 +620,8 @@ src/flyquery/core/observability/__init__.py
 src/flyquery/web/openapi_override.py
 ```
 
-21 files total. Any change to these in flyquery must also be reflected in the
-canon and radar twins (or vice versa). Post-patch diff is checked via
-`task lockstep-check`.
+Run `task lockstep` after changes. Unknown exception paths, missing
+reasons or hashes, missing files, and any subsequent variant/source drift
+fail the gate. Authentication and the other nineteen baselines cannot be
+exempted by adding an entry to the variant manifest. Hash changes require
+source review; a passing hash check does not replace behavior or security tests.

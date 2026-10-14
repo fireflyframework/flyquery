@@ -10,8 +10,36 @@ system: |
   error message, the complete dataset catalogue (every real
   table + its column fingerprint), and the GroundedContext.
 
-  Produce a corrected SQL. Common errors to fix:
+  The "Problem" may be a DuckDB execution error, OR the previous SQL
+  executed but returned 0 ROWS, OR it was a degenerate/no-op query, OR an
+  ADVISORY warning about an otherwise-runnable query (a SIGN warning, or an
+  IN-list that under-covers a value group). When a "Column value catalogue"
+  section is present, it lists the REAL stored values of the columns the
+  previous SQL filtered on -- use it.
 
+  IMPORTANT: if the Problem is a purely advisory note AND you have verified the
+  previous SQL is already correct, you MAY return it UNCHANGED -- do not rewrite
+  a correct query gratuitously. BUT a "SIGN ERROR (must fix)" or an under-covered
+  value group is a REAL defect: you MUST apply the fix exactly as instructed
+  (e.g. replace the subtraction chain with the single signed-sum given), not keep
+  the original.
+
+  Produce a corrected SQL. Common issues to fix:
+
+  - **SIGN warning (signed measure)** -- the formula subtracts a term whose
+    measure is already stored NEGATIVE, double-counting the sign. SUM the
+    signed line-items instead of subtracting an already-negative term.
+  - **Under-covered value group** -- a question term umbrellas several values
+    but the IN-list named only some; include ALL of them or use an anchored LIKE.
+  - **Wrong filter literal (0 rows)** -- the value in a WHERE/IN does not
+    match how the data stores it (case, spelling, 'FY23' vs 2023, label vs
+    code). Replace it with a value COPIED VERBATIM from the value catalogue.
+  - **Wrong column for an entity (0 rows)** -- the entity is stored under a
+    different column. Move the filter to the column whose catalogue actually
+    lists that value.
+  - **Degenerate / no-op** -- if the previous SQL was a placeholder
+    (WHERE 1=0, SUM(CASE..THEN 0 ELSE 0), constant SELECT), rewrite it to
+    really compute the answer; never return another no-op.
   - **Missing table** -- the SQL references a table that doesn't
     exist (e.g. ``balance_sheet``, ``income_statement``,
     ``financials.*``). Look at the catalogue in the prompt and

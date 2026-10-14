@@ -1,4 +1,5 @@
 # Copyright 2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # PR gate -- runs on every pull request, on push to main, and on
 # workflow_dispatch.
@@ -8,19 +9,14 @@
 #   2. typecheck      : pyright (best-effort, advisory)
 #   3. unit           : pytest tests/unit
 #   4. integration    : pytest tests/integration (Postgres+Redis+MinIO via testcontainers)
-#   5. lockstep-check : 21 byte-equivalent files vs canon-pinned SHAs
+#   5. lockstep-check : 19 historical baselines + 2 reviewed service variants
 #   6. sdk-python     : import-smoke + ruff under sdks/python
 #   7. sdk-java       : ``mvn verify`` under sdks/java
 #
 # Notes
 # -----
-# * pyfly + fireflyframework-agentic live in the public
-#   ``fireflyframework`` organization. The
-#   per-job ``Check out sibling firefly framework repos`` step
-#   clones the tagged refs into ``./vendor/`` and ``sed``-rewrites
-#   ``[tool.uv.sources]`` to point there for the duration of CI.
-# * Pin the framework refs in ``env.{PYFLY_REF,AGENTIC_REF}`` so
-#   the gate is reproducible.
+# * Public first-party sources are recorded in pyproject.toml and uv.lock.
+# * Validate the lock before frozen sync; CI must not resolve new dependencies.
 
 name: PR gate
 
@@ -50,8 +46,6 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.13"
-  PYFLY_REF: v26.05.05
-  AGENTIC_REF: v26.05.21
 
 jobs:
   lint:
@@ -65,26 +59,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Check out sibling firefly framework repos
-        run: |
-          git clone --depth=1 --branch "$PYFLY_REF" \
-            https://github.com/fireflyframework/fireflyframework-pyfly.git \
-            ./vendor/pyfly
-          git clone --depth=1 --branch "$AGENTIC_REF" \
-            https://github.com/fireflyframework/fireflyframework-agentic.git \
-            ./vendor/fireflyframework-agentic
-      - name: Repoint uv path sources at ./vendor
-        run: |
-          sed -i \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
-            pyproject.toml
       - name: uv sync (dev + s3)
-        run: uv sync --extra dev --extra s3 --extra file-readers
+        run: |
+          uv lock --check
+          uv sync --frozen --extra dev --extra s3 --extra file-readers
       - name: ruff check
-        run: uv run ruff check src tests
+        run: uv run --frozen ruff check src tests
       - name: ruff format --check
-        run: uv run ruff format --check src tests
+        run: uv run --frozen ruff format --check src tests
 
   typecheck:
     name: Typecheck (advisory)
@@ -98,24 +80,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Check out sibling firefly framework repos
-        run: |
-          git clone --depth=1 --branch "$PYFLY_REF" \
-            https://github.com/fireflyframework/fireflyframework-pyfly.git \
-            ./vendor/pyfly
-          git clone --depth=1 --branch "$AGENTIC_REF" \
-            https://github.com/fireflyframework/fireflyframework-agentic.git \
-            ./vendor/fireflyframework-agentic
-      - name: Repoint uv path sources at ./vendor
-        run: |
-          sed -i \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
-            pyproject.toml
       - name: uv sync (dev)
-        run: uv sync --extra dev --extra file-readers
+        run: |
+          uv lock --check
+          uv sync --frozen --extra dev --extra file-readers
       - name: pyright
-        run: uv run pyright src/flyquery
+        run: uv run --frozen pyright src/flyquery
 
   unit:
     name: Unit tests
@@ -128,22 +98,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Check out sibling firefly framework repos
-        run: |
-          git clone --depth=1 --branch "$PYFLY_REF" \
-            https://github.com/fireflyframework/fireflyframework-pyfly.git \
-            ./vendor/pyfly
-          git clone --depth=1 --branch "$AGENTIC_REF" \
-            https://github.com/fireflyframework/fireflyframework-agentic.git \
-            ./vendor/fireflyframework-agentic
-      - name: Repoint uv path sources at ./vendor
-        run: |
-          sed -i \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
-            pyproject.toml
       - name: uv sync (dev)
-        run: uv sync --extra dev --extra file-readers
+        run: |
+          uv lock --check
+          uv sync --frozen --extra dev --extra file-readers
       - name: pytest tests/unit
         env:
           # Dummy LLM keys so pydantic-ai providers can instantiate
@@ -152,7 +110,7 @@ jobs:
           OPENAI_API_KEY: sk-dummy-key
           ANTHROPIC_API_KEY: sk-dummy-key
           AWS_DEFAULT_REGION: eu-west-1
-        run: uv run pytest -q tests/unit -m 'not integration'
+        run: uv run --frozen pytest -q tests/unit -m 'not integration'
 
   integration:
     name: Integration tests
@@ -166,22 +124,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - name: Check out sibling firefly framework repos
-        run: |
-          git clone --depth=1 --branch "$PYFLY_REF" \
-            https://github.com/fireflyframework/fireflyframework-pyfly.git \
-            ./vendor/pyfly
-          git clone --depth=1 --branch "$AGENTIC_REF" \
-            https://github.com/fireflyframework/fireflyframework-agentic.git \
-            ./vendor/fireflyframework-agentic
-      - name: Repoint uv path sources at ./vendor
-        run: |
-          sed -i \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
-            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
-            pyproject.toml
       - name: uv sync (dev + s3 for MinIO conformance)
-        run: uv sync --extra dev --extra s3 --extra file-readers
+        run: |
+          uv lock --check
+          uv sync --frozen --extra dev --extra s3 --extra file-readers
       - name: Build the pinned upstream MinIO test server
         run: docker build --tag flyquery-integration-minio:${{ github.sha }} tests/integration/minio
       - name: pytest tests/integration
@@ -195,7 +141,7 @@ jobs:
           OPENAI_API_KEY: sk-dummy-key
           ANTHROPIC_API_KEY: sk-dummy-key
           AWS_DEFAULT_REGION: eu-west-1
-        run: uv run pytest tests/integration -q --timeout=300 -m 'not llm'
+        run: uv run --frozen pytest tests/integration -q --timeout=300 -m 'not llm'
 
   lockstep-check:
     name: Lockstep check (canon-pinned SHAs)
@@ -206,9 +152,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       # The lockstep script imports nothing from pyfly/agentic; it
-      # walks the 21 lock-step files, computes SHA-256 after a
-      # canon-normalising substitution, and compares to the pinned
-      # JSON. No uv sync + no sibling clones needed.
+      # checks nineteen historical baseline hashes and two reviewed
+      # full-file service variants. No dependency installation needed.
       - name: Run lockstep check
         run: python scripts/check_lockstep.py
 

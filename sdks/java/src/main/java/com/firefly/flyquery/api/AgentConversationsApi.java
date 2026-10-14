@@ -7,6 +7,7 @@ import com.firefly.flyquery.model.ConversationCreate;
 import com.firefly.flyquery.model.ConversationRead;
 import com.firefly.flyquery.model.ConversationTurnRequest;
 import com.firefly.flyquery.model.HTTPValidationError;
+import com.firefly.flyquery.model.PaginatedConversationRead;
 import java.util.UUID;
 
 import java.util.HashMap;
@@ -31,7 +32,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-06-01T11:28:27.907207+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-10-14T13:20:41.405226-07:00[America/Los_Angeles]", comments = "Generator version: 7.22.0")
 public class AgentConversationsApi {
     private ApiClient apiClient;
 
@@ -158,6 +159,7 @@ public class AgentConversationsApi {
      * <p><b>200</b> - Successful response
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedConversationRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
     private ResponseSpec listConversationsRequestCreation(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
@@ -178,14 +180,16 @@ public class AgentConversationsApi {
         headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
         if (xCorrelationId != null)
         headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
-        final String[] localVarAccepts = { };
+        final String[] localVarAccepts = {
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
         String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedConversationRead> localVarReturnType = new ParameterizedTypeReference<PaginatedConversationRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/conversations", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
@@ -195,10 +199,11 @@ public class AgentConversationsApi {
      * <p><b>200</b> - Successful response
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedConversationRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listConversations(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<PaginatedConversationRead> listConversations(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedConversationRead> localVarReturnType = new ParameterizedTypeReference<PaginatedConversationRead>() {};
         return listConversationsRequestCreation(xAgentToken, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
@@ -208,10 +213,11 @@ public class AgentConversationsApi {
      * <p><b>200</b> - Successful response
      * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedConversationRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listConversationsWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+    public Mono<ResponseEntity<PaginatedConversationRead>> listConversationsWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedConversationRead> localVarReturnType = new ParameterizedTypeReference<PaginatedConversationRead>() {};
         return listConversationsRequestCreation(xAgentToken, xCorrelationId).toEntity(localVarReturnType);
     }
 

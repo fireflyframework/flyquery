@@ -20,7 +20,7 @@ import uuid
 
 import pytest
 
-from flyquery.core.services.retrieval.reranker import NoopReranker, build_reranker
+from flyquery.core.services.retrieval.reranker import LexicalReranker, NoopReranker, build_reranker
 from flyquery.core.services.retrieval.search_index import Hit
 
 
@@ -54,23 +54,25 @@ async def test_noop_reranker_handles_empty() -> None:
 
 
 @pytest.mark.asyncio
-async def test_build_reranker_returns_noop_when_no_model() -> None:
+async def test_build_reranker_returns_lexical_when_no_model() -> None:
     class FakeSettings:
         reranker_model = ""
 
     r = build_reranker(FakeSettings())
-    assert isinstance(r, NoopReranker)
+    # No model configured -> the dependency-free LexicalReranker (a strict win
+    # over the identity NoopReranker, which left wide-table precision unimproved).
+    assert isinstance(r, LexicalReranker)
 
 
 @pytest.mark.asyncio
-async def test_build_reranker_falls_back_on_bad_model() -> None:
+async def test_build_reranker_falls_back_to_lexical_on_bad_model() -> None:
     class FakeSettings:
         reranker_model = "nonexistent/model-that-does-not-exist"
 
     r = build_reranker(FakeSettings())
-    # Should fall back silently to Noop when sentence-transformers isn't installed
-    # or the model can't be loaded.
-    assert isinstance(r, NoopReranker)
+    # Falls back to LexicalReranker when sentence-transformers isn't installed or
+    # the cross-encoder model can't be loaded (token-overlap still beats no-op).
+    assert isinstance(r, LexicalReranker)
 
 
 @pytest.mark.asyncio

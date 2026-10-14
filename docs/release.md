@@ -63,18 +63,38 @@ task openapi-snapshot
 The drift gate at `tests/integration/test_openapi_snapshot.py` will
 fail CI if you forget.
 
+### Reproducible server dependencies
+
+The server now tracks `uv.lock`. Earlier releases resolved dependencies again
+on CI and image builds; those builds could select different transitive versions.
+CI and Docker first run `uv lock --check`, then `uv sync --frozen`. The check
+rejects a stale project manifest before the frozen install; `--frozen` alone
+would not check whether the manifest changed.
+
+The graph uses the public Agentic 26.10.1 wheel and retains the qualified
+pyfly 26.06.113 tag. Update dependencies with the normal resolver, review the
+lock diff, and rerun the native gates. Do not publish local candidate paths or
+replace conflicts with dependency overrides. SDK development locks remain local.
+
+Native query execution and nonempty-candidate selection do not establish that
+an answer matches the user's intended entities or filters. Candidate selection
+is a heuristic; these safety and dependency checks do not close semantic query
+QA or the handling of unmatched literals.
+
 ### 3. Lockstep
 
-21 byte-equivalent files are shared with flycanon + flyradar. The
-check normalises `flyquery -> flycanon` then SHA-256s the result
-against pinned hashes:
+The gate preserves nineteen normalized historical shared-baseline hashes
+and two reviewed service-specific full-file hashes. It validates local
+contracts rather than comparing current canon/radar source:
 
 ```bash
 uv run python scripts/check_lockstep.py
 ```
 
-If this fails, do NOT just rebump the pin -- the change has to land
-in canon / radar first.
+If this fails, review the source change and its behavior before changing any
+pin. The variant manifest permits only the agent builder and observability
+module, with a reason and canonical source provenance. It cannot exempt an
+authentication file. See [architecture](architecture.md#9-lock-step-modules).
 
 ### 4. SDK regen + builds
 
@@ -103,9 +123,9 @@ sibling-client behaviour + every accessor.
 | `docker-publish.yaml` | push to main + `v*.*.*` tags | linux/amd64 + linux/arm64 image to GHCR |
 | `publish-sdks.yaml` | `v*.*.*` tags only | Java to GitHub Packages, Python wheel/sdist to Release assets |
 
-If `pr-gate` is green on `main` before you tag, the tag-driven
-workflows essentially can't fail (they share the same checkout
-+ vendor setup).
+Green PR checks qualify the source. Publication can still fail on registry
+authentication, downloads or packaging; verify the tag workflows and every
+published artifact separately before announcing the release.
 
 ## Tag + push sequence
 

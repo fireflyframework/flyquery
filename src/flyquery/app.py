@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,11 +32,13 @@ from __future__ import annotations
 from pyfly.core import pyfly_application
 from pyfly.starters.core import enable_core_stack
 
+from flyquery import __version__
+
 
 @enable_core_stack
 @pyfly_application(
     name="flyquery",
-    version="26.6.0",
+    version=__version__,
     description=(
         "flyquery -- Operational Structured-Data Intelligence "
         "(upload-driven). Multi-tenant ingestion + Text-to-SQL "

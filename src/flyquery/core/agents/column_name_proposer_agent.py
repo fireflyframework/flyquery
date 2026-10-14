@@ -116,6 +116,9 @@ def build_column_name_proposer_agent(settings):
         output_type=ProposedColumnNames,
         instructions=prompt.instructions,
         settings=settings,
+        # Deterministic naming: identical re-ingests must yield identical
+        # column names, otherwise reconcile sees phantom schema churn.
+        extra_settings={"temperature": 0.0},
     )
 
 

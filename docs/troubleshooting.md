@@ -362,22 +362,20 @@ conversation's snapshot pins reference the previous upload's data.
 
 ### Symptom: CI fails with `scripts/check_lockstep.py: drift detected in src/flyquery/web/conventions/middleware.py`
 
-**Root cause:** A file in the lock-step set was modified in flyquery without
-corresponding updates in flycanon or flyradar (or vice versa).
+**Root cause:** A local source file differs from its reviewed historical
+baseline or service-specific pin, or the variant manifest is invalid.
 
 **Fix:**
 ```bash
-# See which file drifted and which service has the canonical version
-python scripts/check_lockstep.py --verbose
-
-# Copy the canonical version from the service that should lead
-cp ../flycanon/src/flycanon/web/conventions/middleware.py \
-   src/flyquery/web/conventions/middleware.py
-
-# Commit
-git add src/flyquery/web/conventions/middleware.py
-git commit -m "chore: sync middleware.py with flycanon (lock-step)"
+python scripts/check_lockstep.py
 ```
+
+Review the reported source diff before restoring a file or changing a pin.
+Current canon/radar files may have different APIs; copying them blindly can
+break flyquery. Only the builder and observability paths permit reviewed
+service variants. Authentication changes still fail their historical pins.
+The [architecture guide](architecture.md#9-lock-step-modules) explains the
+manifest and canonical provenance; rerun behavior tests after a correction.
 
 ---
 

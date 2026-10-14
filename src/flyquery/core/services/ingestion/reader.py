@@ -51,6 +51,11 @@ class ColumnSchema:
     data_type: str
     is_nullable: bool
     position: int
+    # The source's ORIGINAL header before any rename (e.g. an Excel year header
+    # '2024' that the column-name proposer collapsed to ``year_1``). Preserved so
+    # the query layer can recover what a renamed column actually meant, instead of
+    # relying on a fixed ordinal convention. None when the name was not renamed.
+    original_name: str | None = None
 
 
 @dataclass(frozen=True)

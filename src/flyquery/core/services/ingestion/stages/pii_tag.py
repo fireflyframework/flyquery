@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 """Stage 8 — PII tag.
 
 For each active COLUMN in the snapshot:
-  1. Build (name, description, samples, data_type) from DB.
+  1. Build (name, description, samples, profile values, data_type) from DB.
   2. Call PiiScanner.scan_column().
   3. If a PiiTag is returned, update pii_tag + pii_source and apply policy:
        warn   — log + keep samples as-is
@@ -35,6 +36,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from flyquery.core.services.pii.factory import build_pii_scanner
+from flyquery.core.services.query.value_anchoring import coerce_profile
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +59,16 @@ async def run_pii_tag(
         col_id: uuid.UUID = col["id"]
         col_name: str = col["qualified_name"].rsplit(".", 1)[-1]
         samples: list[str] = col["sample_values_json"] or []
+        # The profile covers values beyond the sampled prefix. Classification
+        # must inspect them before any retrieval or embedding can expose them.
+        profile_values = coerce_profile(col.get("profile_json"), None, max_values=100)["values"]
         description: str | None = col["description"]
         data_type: str = col["data_type"] or ""
 
         tag = await scanner.scan_column(
             name=col_name,
             description=description,
-            samples=samples,
+            samples=samples + profile_values,
             data_type=data_type,
         )
 
@@ -111,7 +116,7 @@ async def _load_columns(
             sa.text(
                 """
                 SELECT id, qualified_name, data_type, description,
-                       sample_values_json
+                       sample_values_json, profile_json
                 FROM flyquery_schema_objects
                 WHERE snapshot_id = :sid
                   AND tenant_id = :tenant
@@ -165,14 +170,14 @@ async def _apply_tag_and_policy(
             )
 
     elif policy == "reject":
-        # Tag + deactivate column (human must review)
+        # Tag + revoke value access + deactivate column (human must review)
         async with session_factory() as s, s.begin():
             await s.execute(
                 sa.text(
                     """
                     UPDATE flyquery_schema_objects
                     SET pii_tag = :tag, pii_source = :source,
-                        is_active = false
+                        sample_values_json = '[]'::jsonb, is_active = false
                     WHERE id = :id AND tenant_id = :tenant
                     """
                 ),

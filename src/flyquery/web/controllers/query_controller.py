@@ -51,7 +51,12 @@ from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
 from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
 from flyquery.core.services.execution.table_resolver import TableResolver
 from flyquery.core.services.query.query_repository import QueryRepository
-from flyquery.core.services.query.query_service import QueryService
+from flyquery.core.services.query.query_service import (
+    QueryService,
+    _render_critic_prompt,
+    _render_generation_prompt,
+    _render_grounding_prompt,
+)
 from flyquery.core.services.query.result_uploader import ResultUploader
 from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
@@ -130,6 +135,54 @@ class QueryController:
         self._ast_classifier = AstClassifier()
         self._scope_guard = ScopeGuard()
         self._executor = DuckDBExecutor(settings)
+
+    async def _guarded_execute(
+        self,
+        sql: str,
+        ast: Any,
+        table_kinds: dict[str, str],
+        resolver: TableResolver,
+        dataset_id: uuid.UUID,
+        bundle: dict,
+    ) -> Any:
+        """Apply ScopeGuard + bad-tables firewall, then execute.
+
+        Mirrors the guards in ``QueryService.answer`` so the streaming path
+        enforces the same dataset isolation and table-existence checks.
+        Returns an ``ExecutionResult`` or an ``ExecutionError`` (which the
+        caller's critic loop can attempt to refine).
+        """
+        from flyquery.core.services.execution.duckdb_executor import ExecutionError
+
+        try:
+            self._scope_guard.check(
+                classification=ast,
+                scopes=_DEFAULT_USER_SCOPES,
+                table_kinds_by_name=table_kinds,
+                dataset_allowlist=None,
+                dataset_of_table={t: str(dataset_id) for t in ast.table_refs},
+            )
+        except ScopeGuardError as exc:
+            return ExecutionError(message=f"Rejected by firewall: {exc}")
+
+        ref_set = {t for t in ast.table_refs if t}
+        bad_tables = sorted(ref_set - set(table_kinds.keys()))
+        if bad_tables:
+            real_tables = sorted(table_kinds.keys()) + [
+                (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
+                for h in (bundle.get("schema_inventory") or [])
+                if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
+            ]
+            real_tables = [t for t in dict.fromkeys(real_tables) if t]
+            return ExecutionError(
+                message=(
+                    f"Table(s) {bad_tables!r} do not exist in this dataset. "
+                    f"Pick ONLY from: {real_tables[:80]!r}."
+                )
+            )
+
+        attached = await resolver.resolve(dataset_id, list(ast.table_refs))
+        return await self._executor.execute(sql, attached)
 
     def _build_service(self, db_session: AsyncSession) -> QueryService:
         """Build a per-request QueryService around the provided session."""
@@ -335,24 +388,28 @@ class QueryController:
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
-            grounded = await grounding_agent.run(
-                {"question": body.question, "bundle": bundle, "starting_point_sql": None}
+            grounded_run = await grounding_agent.run(
+                _render_grounding_prompt(question=body.question, bundle=bundle, starting_point_sql=None)
             )
+            grounded = getattr(grounded_run, "output", grounded_run)
 
             generation_agent = build_generation_agent(self._settings)
-            gen_out = await generation_agent.run(
-                {"grounded": grounded, "question": body.question, "starting_point_sql": None}
+            gen_run = await generation_agent.run(
+                _render_generation_prompt(
+                    body.question, grounded, None, schema_inventory=bundle.get("schema_inventory")
+                )
             )
-            candidate = gen_out.candidates[0]
+            gen_out = getattr(gen_run, "output", gen_run)
+            candidate = gen_out.candidates[0] if gen_out.candidates else None
 
         clarification: ClarificationFrame | None = None
         if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
             clarification = ClarificationFrame(questions=grounded.missing_info, reasons=[])
 
         return ExplainResponse(
-            sql=candidate.sql,
-            reasoning=candidate.reasoning,
-            confidence=candidate.confidence,
+            sql=candidate.sql if candidate else "",
+            reasoning=candidate.reasoning if candidate else "generation produced no candidate",
+            confidence=candidate.confidence if candidate else 0.0,
             grounded_summary={
                 "path": grounded.path,
                 "confidence": grounded.confidence,
@@ -398,15 +455,19 @@ class QueryController:
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
-            grounded = await grounding_agent.run(
-                {"question": body.question, "bundle": bundle, "starting_point_sql": None}
+            grounded_run = await grounding_agent.run(
+                _render_grounding_prompt(question=body.question, bundle=bundle, starting_point_sql=None)
             )
+            grounded = getattr(grounded_run, "output", grounded_run)
 
             generation_agent = build_generation_agent(self._settings)
-            gen_out = await generation_agent.run(
-                {"grounded": grounded, "question": body.question, "starting_point_sql": None}
+            gen_run = await generation_agent.run(
+                _render_generation_prompt(
+                    body.question, grounded, None, schema_inventory=bundle.get("schema_inventory")
+                )
             )
-            chosen_sql = gen_out.candidates[0].sql
+            gen_out = getattr(gen_run, "output", gen_run)
+            chosen_sql = gen_out.candidates[0].sql if gen_out.candidates else ""
 
         ast = self._ast_classifier.classify(chosen_sql)
 
@@ -494,21 +555,26 @@ class QueryController:
             retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
             reranker = build_reranker(self._settings)
 
-            # Stage 1: retrieve + ground
+            # Stage 1: retrieve + ground (same retrieval params + rendered
+            # prompt as the sync POST /query path, so the streaming path is
+            # not blind to the column-value catalogue, examples, metrics).
             bundle = await retriever.retrieve(
                 request.question,
                 dataset_id=request.dataset_id,
                 workspace_id=workspace_id,
                 top_k_schema=self._settings.top_k_schema * 3,
+                top_k_examples=self._settings.top_k_examples,
+                top_k_metrics=self._settings.top_k_metrics,
             )
             schema_hits = bundle.get("schema_objects", [])
             reranked = await reranker.rerank(request.question, schema_hits, top_n=self._settings.top_k_schema)
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
-            grounded = await grounding_agent.run(
-                {"question": request.question, "bundle": bundle, "starting_point_sql": None}
+            grounded_run = await grounding_agent.run(
+                _render_grounding_prompt(question=request.question, bundle=bundle, starting_point_sql=None)
             )
+            grounded = getattr(grounded_run, "output", grounded_run)
 
             yield _sse_frame(
                 "schema_linked",
@@ -537,11 +603,14 @@ class QueryController:
 
             # Stage 3: generate SQL
             generation_agent = build_generation_agent(self._settings)
-            gen_out = await generation_agent.run(
-                {"grounded": grounded, "question": request.question, "starting_point_sql": None}
+            gen_run = await generation_agent.run(
+                _render_generation_prompt(
+                    request.question, grounded, None, schema_inventory=bundle.get("schema_inventory")
+                )
             )
+            gen_out = getattr(gen_run, "output", gen_run)
             candidates = gen_out.candidates
-            chosen_sql = candidates[0].sql
+            chosen_sql = candidates[0].sql if candidates else ""
 
             yield _sse_frame(
                 "sql_generated",
@@ -554,28 +623,38 @@ class QueryController:
                 },
             )
 
-            # Stage 4: execute (with critic loop)
+            # Stage 4: AST + firewall/scope guards + execute (with critic loop).
+            # _guarded_execute applies the SAME ScopeGuard + bad-tables firewall
+            # the sync path enforces, so streaming callers cannot bypass dataset
+            # isolation or run SQL against a non-existent/cross-dataset table.
             ast = self._ast_classifier.classify(chosen_sql)
             table_resolver = TableResolver(session=db_session, settings=self._settings)
-            attached = await table_resolver.resolve(request.dataset_id, list(ast.table_refs))
-
-            exec_result = await self._executor.execute(chosen_sql, attached)
+            table_kinds = await table_resolver.table_kinds_by_name(request.dataset_id, list(ast.table_refs))
+            exec_result = await self._guarded_execute(
+                chosen_sql, ast, table_kinds, table_resolver, request.dataset_id, bundle
+            )
             retries = 0
 
             while isinstance(exec_result, ExecutionError) and retries < self._settings.max_refine_retries:
                 critic_agent = build_critic_agent(self._settings)
-                refined = await critic_agent.run(
-                    {
-                        "sql": chosen_sql,
-                        "error": exec_result.message,
-                        "grounded": grounded,
-                        "question": request.question,
-                    }
+                refined_run = await critic_agent.run(
+                    _render_critic_prompt(
+                        question=request.question,
+                        failing_sql=chosen_sql,
+                        error_message=exec_result.message,
+                        grounded=grounded,
+                        schema_inventory=bundle.get("schema_inventory"),
+                    )
                 )
+                refined = getattr(refined_run, "output", refined_run)
                 chosen_sql = refined.sql
                 ast = self._ast_classifier.classify(chosen_sql)
-                attached = await table_resolver.resolve(request.dataset_id, list(ast.table_refs))
-                exec_result = await self._executor.execute(chosen_sql, attached)
+                table_kinds = await table_resolver.table_kinds_by_name(
+                    request.dataset_id, list(ast.table_refs)
+                )
+                exec_result = await self._guarded_execute(
+                    chosen_sql, ast, table_kinds, table_resolver, request.dataset_id, bundle
+                )
                 retries += 1
 
             snapshot_pins: dict = {}

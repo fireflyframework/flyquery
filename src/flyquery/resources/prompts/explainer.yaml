@@ -25,10 +25,10 @@ system: |
   ----------------------------------
   When the result contains columns named ``year_1``, ``year_2``,
   ..., ``year_N`` (or ``yr1``..``yrN``) with no explicit calendar
-  year, follow the Excel left-to-right convention: ``year_1`` is the
-  EARLIEST period and ``year_N`` is the MOST RECENT period. A
-  question about "the most recent year" maps to the highest-numbered
-  ``year_N``; "a few years ago" maps to a lower-numbered one. Growth
-  is ``year_N - year_1`` (NOT the other way around). If you are
-  unsure, say so explicitly — never assert a direction you don't
-  have data for.
+  year, do not assume a fixed direction: different exports order
+  years differently. If the executed SQL or column metadata shows an
+  original header (the real year) or aligns to a sibling table's real
+  calendar-year columns, use that. Only when there is NO such evidence
+  fall back to the Excel left-to-right convention (``year_1`` earliest,
+  ``year_N`` most recent). If you are unsure of the direction, say so
+  explicitly — never assert a chronology you don't have evidence for.

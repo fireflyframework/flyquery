@@ -62,4 +62,7 @@ def build_rename_detection_agent(settings):
         settings=settings,
         # Rename detection is a short task; cap output tokens tightly
         max_output_tokens=2048,
+        # Deterministic: the same removed/candidate pair must always
+        # resolve the same way so re-ingests don't flip-flop renames.
+        extra_settings={"temperature": 0.0},
     )

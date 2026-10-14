@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +41,7 @@ from starlette.requests import Request
 
 from flyquery.core.services.auth.agent_token_service import AgentTokenService
 from flyquery.interfaces.datasets import DatasetRead
+from flyquery.interfaces.pagination import Paginated
 from flyquery.web.controllers.datasets_controller import (
     DatasetsController as _UserDatasetsController,
 )
@@ -93,7 +95,7 @@ class AgentDatasetsController:
         workspace_id: QueryParam[uuid.UUID] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
-    ) -> dict:
+    ) -> Paginated[DatasetRead]:
         """Search / filter datasets visible to this agent's tenant."""
         await self._verify(http_request)
         return await self._delegate.list_datasets(

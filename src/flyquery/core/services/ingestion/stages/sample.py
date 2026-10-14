@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +18,12 @@
 For each new/changed column in the snapshot:
 1. Skip if pii_tag is already set (and != 'NONE') — column is known PII.
 2. Read N values from the Parquet snapshot (DuckDB).
-3. Pass each value through PiiScanner.scan_single() — refuse to persist if PII.
-4. Persist clean samples to flyquery_schema_objects.sample_values_json.
+3. Apply the column policy to the original values before filtering evidence.
+4. Persist clean samples, or an explicit empty list that denies profile fallback.
 
 CRITICAL ordering guarantee (per spec): PII inline gate runs BEFORE persisting
-any sample. A value that triggers scan_single is silently dropped; if ALL
-values are PII-tainted, no sample is persisted for that column.
+any sample. Warn mode still drops individual PII samples; disabling the scanner
+explicitly opts out. Redact/reject never retain samples from a flagged column.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from flyquery.core.services.ingestion.stages.pii_tag import _apply_tag_and_policy
 from flyquery.core.services.pii.factory import build_pii_scanner
 
 logger = logging.getLogger(__name__)
@@ -68,6 +70,7 @@ async def run_sample(
 
         # Skip columns already known to carry PII
         if pii_tag is not None and pii_tag != "NONE":
+            await _persist_samples(col_id, [], tenant_id, session_factory)
             logger.debug(
                 "stage=sample skip col=%s reason=pii_flagged tag=%s",
                 col_name,
@@ -80,6 +83,28 @@ async def run_sample(
 
         if not raw_values:
             continue
+
+        # Filtering first would erase the evidence used by the later PII stage,
+        # allowing raw profile values to bypass redact/reject on generic names.
+        tag = await scanner.scan_column(
+            name=col_name,
+            description=col["description"],
+            samples=[str(v) for v in raw_values],
+            data_type=col["data_type"] or "",
+        )
+        if tag is not None:
+            policy = settings.pii_policy_samples
+            await _apply_tag_and_policy(
+                col_id=col_id,
+                tag_name=tag.tag,
+                source=tag.source,
+                policy=policy,
+                tenant_id=tenant_id,
+                session_factory=session_factory,
+            )
+            if policy in {"redact", "reject"}:
+                await _persist_samples(col_id, [], tenant_id, session_factory)
+                continue
 
         # PII inline gate: keep only clean values
         clean_samples: list[str] = []
@@ -94,6 +119,7 @@ async def run_sample(
                 col_name,
                 len(raw_values),
             )
+            await _persist_samples(col_id, [], tenant_id, session_factory)
             continue
 
         await _persist_samples(col_id, clean_samples, tenant_id, session_factory)
@@ -154,7 +180,7 @@ async def _load_columns(
         result = await s.execute(
             sa.text(
                 """
-                SELECT id, qualified_name, pii_tag
+                SELECT id, qualified_name, pii_tag, description, data_type
                 FROM flyquery_schema_objects
                 WHERE snapshot_id = :sid
                   AND tenant_id = :tenant

@@ -89,7 +89,13 @@ class _FakeTableResolver:
     def __init__(self):
         self._session = _FakeSession()
 
-    async def resolve(self, dataset_id, table_names, object_store_base=None):
+    async def resolve(self, dataset_id, table_names, object_store_base=None, pins=None):
+        return {}
+
+    async def table_kinds_by_name(self, dataset_id, table_names):
+        return {}
+
+    async def current_snapshots(self, dataset_id, table_names):
         return {}
 
 

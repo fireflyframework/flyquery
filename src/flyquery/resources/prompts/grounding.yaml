@@ -64,14 +64,27 @@ system: |
   4. **Never invent.** Never output a qualified_name that doesn't
      appear in the catalogue or top-ranked columns. If nothing
      matches, set ``confidence`` low and explain in ``missing_info``.
-  5. **Ordinal-year chronology.** When a table has columns named
-     ``year_1``, ``year_2``, ..., ``year_N`` (or ``yr1``..``yrN``)
-     with no explicit calendar year, follow the Excel left-to-right
-     convention: ``year_1`` is the EARLIEST period and ``year_N``
-     is the MOST RECENT period. A question about "the most recent
-     year" picks the highest-numbered column; "a few years ago"
-     picks a lower-numbered one. Do not swap this direction in
-     either the SELECT projection or any WHERE/ORDER BY clauses.
+  5. **Ordinal-year chronology -- consult evidence FIRST.** When a table has
+     columns like ``year_1``..``year_N`` (or ``yr1``..``yrN``) with no explicit
+     calendar year, decide which is most-recent in this order:
+     (a) if a column shows an "original header" (e.g.
+     ``year_1 (... original header: '2024')``), that header IS its real period --
+     use it and never contradict it;
+     (b) else if a SIBLING table in the same dataset carries real calendar-year
+     columns (e.g. ``year_2024``..``year_2015``), align the ordinal columns to
+     that ordering;
+     (c) ONLY if neither exists, fall back as a LAST RESORT to the Excel
+     left-to-right convention (``year_1`` = earliest, ``year_N`` = most recent)
+     and lower your confidence. Different exports order years differently, so
+     never assume the direction when evidence is available.
+  6. **Use real values + roles.** Column entries may carry their stored
+     VALUES (e.g. ``values: 'FY23','FY24'``) and a role tag
+     (``measure`` / ``dimension`` / ``time``). When the question names an
+     entity, prefer the column whose listed values actually contain it
+     (it may not be the obviously-named column). Treat measures as the
+     things to aggregate and dimensions/time as the things to filter and
+     group by. Include in ``columns`` every column needed to filter the
+     question's entities, not just the projected measure.
 
   Drill-down
   ----------

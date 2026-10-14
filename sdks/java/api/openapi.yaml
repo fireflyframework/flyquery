@@ -13,7 +13,7 @@ info:
     name: Apache-2.0
     url: https://github.com/fireflyframework/flyquery/blob/main/LICENSE
   title: flyquery
-  version: 26.10.1
+  version: 26.10.2
 servers:
 - description: This service
   url: /
@@ -167,6 +167,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[ConversationRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -346,6 +350,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[DatasetRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -458,6 +466,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[TableRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1708,6 +1720,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[TableRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1790,6 +1806,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SchemaChangeRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1812,6 +1832,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SchemaObjectRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1834,6 +1858,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SnapshotRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -9830,32 +9858,27 @@ components:
     Ingest_Cost_Cents:
       anyOf:
       - type: number
-      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-        type: string
+      - type: string
       title: Ingest Cost Cents
     Other_Cost_Cents:
       anyOf:
       - type: number
-      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-        type: string
+      - type: string
       title: Other Cost Cents
     Query_Cost_Cents:
       anyOf:
       - type: number
-      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-        type: string
+      - type: string
       title: Query Cost Cents
     Total_Cost_Cents:
       anyOf:
       - type: number
-      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-        type: string
+      - type: string
       title: Total Cost Cents
     Cost_Cents:
       anyOf:
       - type: number
-      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-        type: string
+      - type: string
       title: Cost Cents
     Cost_Cents_1:
       anyOf:
@@ -9867,8 +9890,7 @@ components:
     Confidence:
       anyOf:
       - type: number
-      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
-        type: string
+      - type: string
       title: Confidence
     Location_inner:
       anyOf:

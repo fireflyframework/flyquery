@@ -1,7 +1,7 @@
 [project]
 name = "flyquery"
 # CalVer YY.MM.PP per memory `firefly_uses_calver`.
-version = "26.10.1"
+version = "26.10.2"
 description = "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files. Part of Firefly Framework."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -19,7 +19,7 @@ dependencies = [
     # GenAI metaframework -- FireflyAgent over pydantic-ai + the OpenAI
     # embeddings provider. flyquery builds its own pgvector hybrid retriever
     # and declares sqlglot directly below for its Text-to-SQL pipeline.
-    "fireflyframework-agentic[rest,security,redis,openai-embeddings]>=26.5.11",
+    "fireflyframework-agentic[security,openai-embeddings]>=26.10.1",
 
     # HTTP + tenacity (outbound).
     "httpx>=0.28.0",
@@ -113,21 +113,11 @@ file-readers = [
 requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-# fireflyframework-agentic depends on pydantic-ai>=1.99, whose transitive
-# ``pydantic-ai-slim[mistral]`` drags in ``mistralai>=2.0.0`` (PyPI pre-release
-# only) and forces ``opentelemetry-semantic-conventions==0.60b1``. flyquery
-# never uses the mistral provider, so pin mistralai to the stable 1.x line.
-# Drop once mistralai 2.x reaches stable or pydantic-ai stops requesting it.
-override-dependencies = [
-    "mistralai>=1.0.0,<2.0.0",
-]
-
 [tool.uv.sources]
 # pyfly and agentic are consumed from their published git tags so fresh
 # clones / CI resolve them without any sibling path.
 pyfly = { git = "https://github.com/fireflyframework/fireflyframework-pyfly.git", tag = "v26.06.113" }
-fireflyframework-agentic = { git = "https://github.com/fireflyframework/fireflyframework-agentic.git", tag = "v26.05.30" }
+fireflyframework-agentic = { url = "https://github.com/fireflyframework/fireflyframework-agentic/releases/download/v26.10.1/fireflyframework_agentic-26.10.1-py3-none-any.whl" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/flyquery"]

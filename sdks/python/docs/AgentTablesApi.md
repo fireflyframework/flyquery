@@ -251,46 +251,42 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_changes**
-> list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedSchemaChangeRead list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
 * Api Key Authentication (AgentToken):
 
 ```python
-import flyquery_sdk
-from flyquery_sdk.rest import ApiException
-from pprint import pprint
+import asyncio
+import os
 
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = flyquery_sdk.Configuration(
-    host = "http://localhost"
-)
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import AgentTablesApi
+from flyquery_sdk.exceptions import ApiException
+from flyquery_sdk.models import PaginatedSchemaChangeRead
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
 
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+async def main():
+    async with ApiClient(Configuration(host=os.environ["FLYQUERY_URL"])) as client:
+        client.default_headers.update({
+            "X-Tenant-Id": os.environ["FLYQUERY_TENANT_ID"],
+            "X-Workspace-Id": os.environ["FLYQUERY_WORKSPACE_ID"],
+        })
+        api = AgentTablesApi(client)
+        try:
+            page: PaginatedSchemaChangeRead = await api.list_changes(
+                table_id=os.environ["FLYQUERY_TABLE_ID"],
+                x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+                _request_timeout=15.0,
+            )
+            print(page.total)
+        except ApiException as exc:
+            print(f"HTTP {exc.status}")
+            raise
 
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
-# Enter a context with an instance of the API client
-async with flyquery_sdk.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = flyquery_sdk.AgentTablesApi(api_client)
-    table_id = 'table_id_example' # str | 
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-
-    try:
-        await api_instance.list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
-    except Exception as e:
-        print("Exception when calling AgentTablesApi->list_changes: %s\n" % e)
+asyncio.run(main())
 ```
 
 
@@ -306,7 +302,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSchemaChangeRead**](PaginatedSchemaChangeRead.md)
 
 ### Authorization
 
@@ -315,7 +311,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -326,46 +322,42 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_objects**
-> list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedSchemaObjectRead list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
 * Api Key Authentication (AgentToken):
 
 ```python
-import flyquery_sdk
-from flyquery_sdk.rest import ApiException
-from pprint import pprint
+import asyncio
+import os
 
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = flyquery_sdk.Configuration(
-    host = "http://localhost"
-)
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import AgentTablesApi
+from flyquery_sdk.exceptions import ApiException
+from flyquery_sdk.models import PaginatedSchemaObjectRead
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
 
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+async def main():
+    async with ApiClient(Configuration(host=os.environ["FLYQUERY_URL"])) as client:
+        client.default_headers.update({
+            "X-Tenant-Id": os.environ["FLYQUERY_TENANT_ID"],
+            "X-Workspace-Id": os.environ["FLYQUERY_WORKSPACE_ID"],
+        })
+        api = AgentTablesApi(client)
+        try:
+            page: PaginatedSchemaObjectRead = await api.list_objects(
+                table_id=os.environ["FLYQUERY_TABLE_ID"],
+                x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+                _request_timeout=15.0,
+            )
+            print(page.total)
+        except ApiException as exc:
+            print(f"HTTP {exc.status}")
+            raise
 
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
-# Enter a context with an instance of the API client
-async with flyquery_sdk.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = flyquery_sdk.AgentTablesApi(api_client)
-    table_id = 'table_id_example' # str | 
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-
-    try:
-        await api_instance.list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
-    except Exception as e:
-        print("Exception when calling AgentTablesApi->list_objects: %s\n" % e)
+asyncio.run(main())
 ```
 
 
@@ -381,7 +373,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSchemaObjectRead**](PaginatedSchemaObjectRead.md)
 
 ### Authorization
 
@@ -390,7 +382,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -401,46 +393,42 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_snapshots**
-> list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedSnapshotRead list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
 * Api Key Authentication (AgentToken):
 
 ```python
-import flyquery_sdk
-from flyquery_sdk.rest import ApiException
-from pprint import pprint
+import asyncio
+import os
 
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = flyquery_sdk.Configuration(
-    host = "http://localhost"
-)
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import AgentTablesApi
+from flyquery_sdk.exceptions import ApiException
+from flyquery_sdk.models import PaginatedSnapshotRead
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
 
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+async def main():
+    async with ApiClient(Configuration(host=os.environ["FLYQUERY_URL"])) as client:
+        client.default_headers.update({
+            "X-Tenant-Id": os.environ["FLYQUERY_TENANT_ID"],
+            "X-Workspace-Id": os.environ["FLYQUERY_WORKSPACE_ID"],
+        })
+        api = AgentTablesApi(client)
+        try:
+            page: PaginatedSnapshotRead = await api.list_snapshots(
+                table_id=os.environ["FLYQUERY_TABLE_ID"],
+                x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+                _request_timeout=15.0,
+            )
+            print(page.total)
+        except ApiException as exc:
+            print(f"HTTP {exc.status}")
+            raise
 
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
-# Enter a context with an instance of the API client
-async with flyquery_sdk.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = flyquery_sdk.AgentTablesApi(api_client)
-    table_id = 'table_id_example' # str | 
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-
-    try:
-        await api_instance.list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
-    except Exception as e:
-        print("Exception when calling AgentTablesApi->list_snapshots: %s\n" % e)
+asyncio.run(main())
 ```
 
 
@@ -456,7 +444,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSnapshotRead**](PaginatedSnapshotRead.md)
 
 ### Authorization
 
@@ -465,7 +453,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -476,46 +464,42 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_tables**
-> list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedTableRead list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
 * Api Key Authentication (AgentToken):
 
 ```python
-import flyquery_sdk
-from flyquery_sdk.rest import ApiException
-from pprint import pprint
+import asyncio
+import os
 
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = flyquery_sdk.Configuration(
-    host = "http://localhost"
-)
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import AgentTablesApi
+from flyquery_sdk.exceptions import ApiException
+from flyquery_sdk.models import PaginatedTableRead
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
 
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+async def main():
+    async with ApiClient(Configuration(host=os.environ["FLYQUERY_URL"])) as client:
+        client.default_headers.update({
+            "X-Tenant-Id": os.environ["FLYQUERY_TENANT_ID"],
+            "X-Workspace-Id": os.environ["FLYQUERY_WORKSPACE_ID"],
+        })
+        api = AgentTablesApi(client)
+        try:
+            page: PaginatedTableRead = await api.list_tables(
+                dataset_id=os.environ["FLYQUERY_DATASET_ID"],
+                x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+                _request_timeout=15.0,
+            )
+            print(page.total)
+        except ApiException as exc:
+            print(f"HTTP {exc.status}")
+            raise
 
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
-# Enter a context with an instance of the API client
-async with flyquery_sdk.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = flyquery_sdk.AgentTablesApi(api_client)
-    dataset_id = 'dataset_id_example' # str | 
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-
-    try:
-        await api_instance.list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
-    except Exception as e:
-        print("Exception when calling AgentTablesApi->list_tables: %s\n" % e)
+asyncio.run(main())
 ```
 
 
@@ -531,7 +515,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -540,7 +524,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -551,52 +535,42 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **search_tables**
-> search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+> PaginatedTableRead search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
 
 ### Example
 
 * Api Key Authentication (AgentToken):
 
 ```python
-import flyquery_sdk
-from flyquery_sdk.rest import ApiException
-from pprint import pprint
+import asyncio
+import os
 
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = flyquery_sdk.Configuration(
-    host = "http://localhost"
-)
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import AgentTablesApi
+from flyquery_sdk.exceptions import ApiException
+from flyquery_sdk.models import PaginatedTableRead
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
 
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+async def main():
+    async with ApiClient(Configuration(host=os.environ["FLYQUERY_URL"])) as client:
+        client.default_headers.update({
+            "X-Tenant-Id": os.environ["FLYQUERY_TENANT_ID"],
+            "X-Workspace-Id": os.environ["FLYQUERY_WORKSPACE_ID"],
+        })
+        api = AgentTablesApi(client)
+        try:
+            page: PaginatedTableRead = await api.search_tables(
+                dataset_id=os.environ["FLYQUERY_DATASET_ID"],
+                x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+                _request_timeout=15.0,
+            )
+            print(page.total)
+        except ApiException as exc:
+            print(f"HTTP {exc.status}")
+            raise
 
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
-# Enter a context with an instance of the API client
-async with flyquery_sdk.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = flyquery_sdk.AgentTablesApi(api_client)
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-    q = 'q_example' # str |  (optional)
-    name = 'name_example' # str |  (optional)
-    dataset_id = 'dataset_id_example' # str |  (optional)
-    kind = 'kind_example' # str |  (optional)
-    is_active = False # bool |  (optional) (default to False)
-    limit = 100 # int |  (optional) (default to 100)
-    offset = 0 # int |  (optional) (default to 0)
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-
-    try:
-        await api_instance.search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
-    except Exception as e:
-        print("Exception when calling AgentTablesApi->search_tables: %s\n" % e)
+asyncio.run(main())
 ```
 
 
@@ -618,7 +592,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -627,7 +601,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 

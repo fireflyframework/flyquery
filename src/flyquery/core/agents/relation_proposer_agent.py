@@ -56,4 +56,6 @@ def build_relation_proposer_agent(settings):
         output_type=ProposedRelations,
         instructions=prompt.instructions,
         settings=settings,
+        # Deterministic relation proposals across re-ingests.
+        extra_settings={"temperature": 0.0},
     )

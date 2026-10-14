@@ -19,6 +19,40 @@ system: |
 
   Trust order: SEMANTIC_LAYER > UPLOADED_TABLE.
 
+  Value anchoring (CRITICAL)
+  --------------------------
+  The prompt lists, for each in-scope column, its data type, semantic role
+  (measure / dimension / time) and the ACTUAL stored values (or numeric
+  range). You MUST anchor to these:
+  - Every literal in a WHERE / IN / GROUP BY / JOIN must be COPIED VERBATIM
+    from that column's "values:" list (exact case + spelling). Never invent,
+    translate, pluralise, or re-case a filter literal.
+  - If a question entity (a brand, region, business unit, person, status, ...)
+    appears under a column DIFFERENT from the one you'd expect, filter the
+    column that actually contains it. The "Resolved entities" section tells you
+    where located literals live -- trust it.
+  - For a year/period/time column whose values are strings (e.g. 'FY23'),
+    filter with the STRING form shown -- never an integer like 2023. Never use
+    a numeric MEASURE column as the year/time axis. If a column shows an
+    "original header" (e.g. `year_1 (... original header: '2024')`), THAT is its
+    real meaning -- use it to decide which column is the most recent or a given year.
+  - A term shown under "Resolved value groups" is an UMBRELLA over several stored
+    values of one column -- filter the WHOLE set (IN of every listed value, or an
+    anchored LIKE when the list is incomplete), never a subset.
+  - A measure annotated SIGNED stores both positive and negative values (some
+    line-items are already stored negative). To apply a user additive formula
+    like Total = (+)A (-)B (-)C over a SIGNED measure, SUM the signed line-items
+    -- do NOT subtract a term whose stored values are already negative, which
+    double-counts the sign. Only negate a term confirmed to be stored positive.
+  - Aggregate measure columns; filter and group on dimension/time columns.
+
+  Never produce a no-op
+  ---------------------
+  A placeholder query (WHERE 1=0, SUM(CASE WHEN ... THEN 0 ELSE 0 END), a
+  constant SELECT) is NEVER a valid candidate. If you cannot map a required
+  filter to a real stored value, widen or drop that filter and lower the
+  candidate's confidence -- do not emit a constant/empty query.
+
   If the GroundedContext provides a starting_point_sql, your candidates
   should be deltas (added WHERE clause, swapped column, etc.) -- do not
   rewrite from scratch unless necessary.

@@ -89,7 +89,10 @@ class _FakeTableResolver:
     def __init__(self):
         self._session = _FakeSession()
 
-    async def resolve(self, dataset_id, table_names, object_store_base=None):
+    async def resolve(self, dataset_id, table_names, object_store_base=None, pins=None):
+        return {}
+
+    async def current_snapshots(self, dataset_id, table_names):
         return {}
 
 
@@ -112,6 +115,28 @@ class _FakeMappingResult:
 
     def __iter__(self):
         return iter(self._rows)
+
+
+class _TableAwareSession:
+    """Session whose table-kind lookup reports one UPLOADED table so a realistic
+    ``... FROM <name>`` query clears the scope + unknown-table guards."""
+
+    def __init__(self, table_name: str):
+        self._table_name = table_name
+
+    async def execute(self, stmt, params=None):
+        return _FakeMappingResult([{"name": self._table_name, "kind": "UPLOADED"}])
+
+
+class _TableAwareResolver:
+    def __init__(self, table_name: str = "t"):
+        self._session = _TableAwareSession(table_name)
+
+    async def resolve(self, dataset_id, table_names, object_store_base=None, pins=None):
+        return {}
+
+    async def current_snapshots(self, dataset_id, table_names):
+        return {}
 
 
 class _FakeQueryRepo:
@@ -159,6 +184,21 @@ class _FakeSettings:
     top_k_metrics = 8
     max_refine_retries = 2
     grounding_min_confidence = 0.55
+    generation_candidates = 3
+    # Value-anchoring knobs: disabled here so these orchestration tests exercise
+    # the core answer() flow (call order / persistence / auto-learn). The
+    # value-anchoring paths need a real dataset value-scan and are covered by the
+    # value_anchoring unit tests + integration/e2e.
+    value_catalog_char_budget = 320
+    value_catalog_max_columns = 80
+    entity_resolution_enabled = False
+    entity_resolution_max_literals = 8
+    zero_row_repair_enabled = False
+    candidate_exec_selection = False
+    synthesis_function_firewall = False
+    group_resolution_enabled = False
+    signed_measure_repair_enabled = False
+    group_coverage_repair_enabled = False
 
 
 def _make_grounded(confidence: float = 0.9, path: str = "SYNTHESIS") -> GroundedContext:
@@ -217,6 +257,8 @@ def _make_service(
     auto_learner=None,
     semantic_repo=None,
     generation_agent=None,
+    critic_agent=None,
+    table_resolver=None,
 ):
     if grounded is None:
         grounded = _make_grounded()
@@ -234,6 +276,10 @@ def _make_service(
         auto_learner = _FakeAutoLearner()
     if generation_agent is None:
         generation_agent = _FakeAgent(candidates)
+    if critic_agent is None:
+        critic_agent = _FakeAgent(RefinedSql(sql="SELECT 2", reasoning="fixed", confidence=0.8))
+    if table_resolver is None:
+        table_resolver = _FakeTableResolver()
 
     explanation = ResultExplanation(summary="The answer is 1.", chart_hint="none")
 
@@ -242,11 +288,11 @@ def _make_service(
         reranker=_FakeReranker(),
         grounding_agent=_FakeAgent(grounded),
         generation_agent=generation_agent,
-        critic_agent=_FakeAgent(RefinedSql(sql="SELECT 2", reasoning="fixed", confidence=0.8)),
+        critic_agent=critic_agent,
         explainer_agent=_FakeAgent(explanation),
         ast_classifier=AstClassifier(),
         scope_guard=ScopeGuard(),
-        table_resolver=_FakeTableResolver(),
+        table_resolver=table_resolver,
         executor=executor,
         query_repo=query_repo,
         settings=_FakeSettings(),
@@ -338,8 +384,10 @@ async def test_answer_calls_auto_learner_on_first_shot():
 
 @pytest.mark.asyncio
 async def test_answer_retries_on_execution_error():
-    """On ExecutionError, the CriticAgent is called and the result is REFINED_OK or FAILED."""
-    # First call fails; critic returns "SELECT 2"; second call also fails → FAILED
+    """On ExecutionError the CriticAgent is called, its refined (non-degenerate)
+    SQL is re-executed, and the retry is counted (REFINED_OK or FAILED)."""
+    # First execution fails; the critic returns a different, runnable SQL; the
+    # second execution succeeds -> one counted retry, REFINED_OK.
     call_count = [0]
 
     class _AlternatingExecutor:
@@ -350,7 +398,15 @@ async def test_answer_retries_on_execution_error():
             return ExecutionResult(rows=[{"v": 2}], columns=["v"], row_count=1, truncated=False)
 
     repo = _FakeQueryRepo()
-    svc = _make_service(executor=_AlternatingExecutor(), query_repo=repo)
+    svc = _make_service(
+        executor=_AlternatingExecutor(),
+        query_repo=repo,
+        candidates=_make_candidates("SELECT v FROM t"),
+        critic_agent=_FakeAgent(
+            RefinedSql(sql="SELECT v FROM t WHERE v > 0", reasoning="fixed", confidence=0.8)
+        ),
+        table_resolver=_TableAwareResolver(),
+    )
 
     result = await svc.answer(
         tenant_id="ten-a",
@@ -360,8 +416,9 @@ async def test_answer_retries_on_execution_error():
         scopes={"flyquery.query:read"},
     )
 
-    assert result.execution_status in ("REFINED_OK", "FAILED")
-    assert repo.created_queries[0]["retries"] >= 1
+    assert result.execution_status == "REFINED_OK"
+    assert repo.created_queries[0]["retries"] == 1
+    assert call_count[0] == 2
 
 
 @pytest.mark.asyncio
@@ -556,3 +613,142 @@ async def test_critic_cannot_replace_a_scoped_query_with_an_unregistered_native_
     )
     assert result.execution_status not in ("OK", "REFINED_OK")
     assert executor.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_rejected_advisory_sql_keeps_the_executed_query_and_result_together(tmp_path):
+    from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
+
+    file = tmp_path / "unregistered.csv"
+    file.write_text("evidence\nsynthetic-unregistered-file\n")
+
+    class Settings:
+        duckdb_memory_limit = "256MB"
+        default_row_cap = 100
+
+    repo = _FakeQueryRepo()
+    original_sql = "SELECT 7 AS value"
+    svc = _make_service(
+        candidates=_make_candidates(original_sql),
+        executor=DuckDBExecutor(Settings()),
+        query_repo=repo,
+        critic_agent=_FakeAgent(
+            RefinedSql(sql=f"SELECT * FROM read_csv_auto('{file}')", reasoning="fixture", confidence=0.8)
+        ),
+    )
+
+    async def advisory(*args):
+        return "Reconsider this synthetic result"
+
+    svc._advisory_repair = advisory
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="synthetic advisory",
+        scopes={"flyquery.query:read"},
+    )
+    assert result.execution_status == "OK"
+    assert result.sql == original_sql
+    assert result.preview == [{"value": 7}]
+    assert repo.created_queries[0]["executed_sql"] == original_sql
+
+
+@pytest.mark.asyncio
+async def test_conversation_reuses_the_actual_first_snapshot_after_reingestion(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
+
+    old_snapshot, new_snapshot = str(uuid.uuid4()), str(uuid.uuid4())
+    paths = {}
+    for snapshot, value in ((old_snapshot, 10), (new_snapshot, 99)):
+        path = tmp_path / f"{snapshot}.parquet"
+        pq.write_table(pa.table({"total": [value]}), path)
+        paths[snapshot] = str(path)
+
+    class Settings:
+        duckdb_memory_limit = "256MB"
+        default_row_cap = 100
+
+    class Resolver(_TableAwareResolver):
+        current = old_snapshot
+
+        async def current_snapshots(self, dataset_id, table_names):
+            return {name: self.current for name in table_names}
+
+        async def resolve(self, dataset_id, table_names, object_store_base=None, pins=None):
+            return {name: paths[(pins or {}).get(name, self.current)] for name in table_names}
+
+    class Conversation:
+        turn = None
+
+        async def last_turn(self, conversation_id):
+            return self.turn
+
+        async def append_turn(self, **kwargs):
+            self.turn = kwargs
+
+    resolver = Resolver("orders")
+    conversation = Conversation()
+    svc = _make_service(
+        candidates=_make_candidates("SELECT total FROM orders"),
+        executor=DuckDBExecutor(Settings()),
+        table_resolver=resolver,
+    )
+    svc._conversation_service = conversation
+    arguments = {
+        "tenant_id": "ten-a",
+        "workspace_id": uuid.uuid4(),
+        "dataset_id": uuid.uuid4(),
+        "conversation_id": uuid.uuid4(),
+        "question": "synthetic snapshot",
+        "scopes": {"flyquery.query:read"},
+    }
+    first = await svc.answer(**arguments)
+    assert first.preview == [{"total": 10}]
+    assert first.snapshot_pins == {"orders": old_snapshot}
+    assert conversation.turn["snapshot_pins_json"] == first.snapshot_pins
+
+    resolver.current = new_snapshot
+    second = await svc.answer(**arguments)
+    assert second.preview == [{"total": 10}]
+    assert second.snapshot_pins == first.snapshot_pins
+    assert conversation.turn["snapshot_pins_json"] == first.snapshot_pins
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("missing_scope", [True, False])
+async def test_admission_denial_precedes_retrieval_and_agent_calls(missing_scope):
+    retrievals = []
+
+    class Retriever(_FakeRetriever):
+        async def retrieve(self, *args, **kwargs):
+            retrievals.append(kwargs)
+            return await super().retrieve(*args, **kwargs)
+
+    generation = _CountingAgent(_make_candidates("SELECT 1 AS value"))
+    grounding = _CountingAgent(_make_grounded())
+    svc = _make_service(generation_agent=generation)
+    svc._retriever = Retriever()
+    svc._grounding_agent = grounding
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="synthetic denied request",
+        scopes=set() if missing_scope else {"flyquery.query:read"},
+        dataset_allowlist=None if missing_scope else set(),
+    )
+    assert result.execution_status == "REJECTED_BY_FIREWALL"
+    assert result.sql is None
+    assert retrievals == []
+    assert grounding.calls == 0
+    assert generation.calls == 0
+    receipt = svc._query_repo.created_queries[0]
+    assert receipt["dataset_id"] is None
+    assert receipt["executed_sql"] is None
+    assert receipt["candidates_json"] == []
+    assert receipt["retries"] == 0
+    assert receipt["error_json"]["code"] == "SCOPE_ADMISSION_DENIED"

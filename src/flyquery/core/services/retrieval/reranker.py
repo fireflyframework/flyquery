@@ -21,9 +21,22 @@ silently returns a ``NoopReranker`` instead.
 
 from __future__ import annotations
 
+import logging
+import re
 from typing import Any, Protocol
 
 from flyquery.core.services.retrieval.search_index import Hit
+
+logger = logging.getLogger(__name__)
+
+# Guard so the cross-encoder-unavailable warning is emitted at most once per process.
+_warned_noop_fallback = False
+
+_TOKEN = re.compile(r"[\wÀ-ý]+", re.UNICODE)
+
+
+def _tokens(text: str) -> set[str]:
+    return {t.lower() for t in _TOKEN.findall(text or "") if len(t) >= 2}
 
 
 class Reranker(Protocol):
@@ -38,14 +51,38 @@ class NoopReranker:
     """Identity reranker that preserves the original order."""
 
     async def rerank(self, query: str, hits: list[Hit], top_n: int) -> list[Hit]:  # noqa: ARG002
-        """Return the first ``top_n`` hits unchanged.
-
-        :param query: NL query string (unused)
-        :param hits: candidate hits from the retriever
-        :param top_n: how many to return
-        :return: first ``top_n`` elements of ``hits``
-        """
+        """Return the first ``top_n`` hits unchanged."""
         return hits[:top_n]
+
+
+class LexicalReranker:
+    """Dependency-free reranker: token-overlap between the query and each hit.
+
+    A real cross-encoder is better, but when ``sentence-transformers`` is not
+    installed this is a strict improvement over the identity ``NoopReranker``:
+    it boosts hits whose text (now including the column's indexed VALUES) shares
+    tokens with the question, blending the lexical score with the retriever's
+    RRF score so a token-exact value/name match surfaces the owning column.
+    Fully dataset-agnostic.
+    """
+
+    async def rerank(self, query: str, hits: list[Hit], top_n: int) -> list[Hit]:
+        if not hits:
+            return []
+        qtok = _tokens(query)
+        if not qtok:
+            return hits[:top_n]
+
+        def score(h: Hit) -> float:
+            htok = _tokens(h.text)
+            if not htok:
+                return 0.0
+            overlap = len(qtok & htok)
+            lex = overlap / (len(qtok) ** 0.5)
+            return lex + 0.25 * float(getattr(h, "score", 0.0) or 0.0)
+
+        order = sorted(range(len(hits)), key=lambda i: score(hits[i]), reverse=True)
+        return [hits[i] for i in order[:top_n]]
 
 
 class CrossEncoderReranker:
@@ -77,21 +114,36 @@ class CrossEncoderReranker:
         return [hits[i] for i in order[:top_n]]
 
 
-def build_reranker(settings: Any) -> NoopReranker | CrossEncoderReranker:
+def build_reranker(settings: Any) -> NoopReranker | LexicalReranker | CrossEncoderReranker:
     """Factory: return a ``CrossEncoderReranker`` when possible.
 
-    Falls back to ``NoopReranker`` when:
+    Falls back to the dependency-free ``LexicalReranker`` (NOT a no-op) when:
     - ``settings.reranker_model`` is empty / falsy
     - ``sentence-transformers`` is not installed
     - The specified model cannot be loaded (network error, etc.)
 
+    The previous default silently degraded to an identity pass-through, leaving
+    wide-table column precision unimproved; the lexical fallback is a strict win
+    on any dataset and is what makes value-aware retrieval reach the prompt.
+
     :param settings: ``FlyquerySettings`` instance
     :return: a ready-to-use reranker
     """
+    global _warned_noop_fallback
     model_name = getattr(settings, "reranker_model", "") or ""
     if not model_name:
-        return NoopReranker()
+        return LexicalReranker()
     try:
         return CrossEncoderReranker(model_name)
-    except Exception:  # noqa: BLE001
-        return NoopReranker()
+    except Exception as exc:  # noqa: BLE001
+        if not _warned_noop_fallback:
+            _warned_noop_fallback = True
+            logger.warning(
+                "reranker model=%s unavailable (%s) -- falling back to the "
+                "dependency-free LexicalReranker (token-overlap). Cross-encoder "
+                "reranking is disabled; install sentence-transformers / make the "
+                "model loadable to re-enable it.",
+                model_name,
+                exc,
+            )
+        return LexicalReranker()

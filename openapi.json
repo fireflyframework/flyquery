@@ -906,7 +906,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -918,7 +917,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -930,7 +928,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -942,7 +939,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -1005,7 +1001,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -1479,7 +1474,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -2532,7 +2526,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -4243,7 +4236,6 @@
                 "type": "number"
               },
               {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -6214,7 +6206,7 @@
       "url": "https://github.com/fireflyframework/flyquery/blob/main/LICENSE"
     },
     "title": "flyquery",
-    "version": "26.10.1"
+    "version": "26.10.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6376,6 +6368,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[ConversationRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -6621,6 +6620,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[DatasetRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -6790,6 +6796,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[TableRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8653,6 +8666,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[TableRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8778,6 +8798,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SchemaChangeRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8812,6 +8839,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SchemaObjectRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8846,6 +8880,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SnapshotRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },

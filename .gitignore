@@ -32,9 +32,9 @@ wheels/
 .uv/
 .pip/
 
-# uv.lock is generated locally; CI runs ``uv sync`` (not ``uv sync
-# --frozen``) so the lockfile doesn't need to ride in git.
-uv.lock
+# The server lock is reviewed release source; SDK development locks remain local.
+**/uv.lock
+!/uv.lock
 
 # --- Java SDK build artefacts ------------------------------------------------
 sdks/java/target/

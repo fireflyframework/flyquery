@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,6 +39,7 @@ from __future__ import annotations
 from typing import Any
 
 from flyquery.config import FlyquerySettings
+from flyquery.core.observability import build_agent_middleware
 
 
 def build_agent(
@@ -95,6 +97,7 @@ def build_agent(
         instructions=instructions,
         output_type=output_type,
         model_settings=model_settings,
+        middleware=build_agent_middleware(),
         auto_register=False,
     )
 

@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,18 +17,8 @@
 #
 # Multi-stage Docker build for flyquery.
 #
-# Sibling-path deps (pyfly, fireflyframework-agentic) are passed in as
-# named BuildKit contexts so the build context stays scoped to this
-# directory.
-#
-# Usage:
-#     docker buildx build \
-#         --build-context pyfly=../../fireflyframework/fireflyframework-pyfly \
-#         --build-context fireflyframework-agentic=../../fireflyframework/fireflyframework-agentic \
-#         --tag flyquery:latest \
-#         .
-#
-# See docker-compose.yml for the canonical invocation.
+# Dependencies come from public first-party sources pinned by uv.lock.
+# Build: docker build --tag flyquery:local .
 
 ARG PYTHON_VERSION=3.13
 
@@ -43,31 +34,17 @@ RUN apt-get update \
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_LINK_MODE=copy
 
-# Stage sibling sources (only what uv needs to install the editable wheel).
-COPY --from=pyfly                     /pyproject.toml  /build/pyfly/pyproject.toml
-COPY --from=pyfly                     /README.md       /build/pyfly/README.md
-COPY --from=pyfly                     /src             /build/pyfly/src
-
-COPY --from=fireflyframework-agentic  /pyproject.toml          /build/fireflyframework-agentic/pyproject.toml
-COPY --from=fireflyframework-agentic  /README.md               /build/fireflyframework-agentic/README.md
-COPY --from=fireflyframework-agentic  /LICENSE                 /build/fireflyframework-agentic/LICENSE
-COPY --from=fireflyframework-agentic  /fireflyframework_agentic /build/fireflyframework-agentic/fireflyframework_agentic
-
 # Stage the project manifests for layer caching. README.md is required
 # by hatchling because pyproject.toml declares ``readme = "README.md"``.
 WORKDIR /app
 COPY pyproject.toml /app/pyproject.toml
 COPY README.md      /app/README.md
-COPY uv.lock*       /app/
-
-# Rewrite path-source entries so uv resolves siblings inside the container.
-RUN sed -i \
-        -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "/build/pyfly"|' \
-        -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "/build/fireflyframework-agentic"|' \
-        /app/pyproject.toml
+COPY LICENSE        /app/LICENSE
+COPY uv.lock        /app/uv.lock
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --no-dev --no-editable
+    uv lock --check \
+    && uv sync --frozen --no-install-project --no-dev --no-editable
 
 # Copy the application source + migrations and finalise the install.
 COPY src/         /app/src/
@@ -78,7 +55,7 @@ COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev --no-editable
+    uv sync --frozen --no-dev --no-editable
 
 
 # ---- Stage 2: runtime -----------------------------------------------------
@@ -112,7 +89,7 @@ RUN apt-get update \
     && useradd --uid 10001 --shell /usr/sbin/nologin --no-create-home flyquery
 
 WORKDIR /app
-# Copy artefacts as the unprivileged ``canon`` user so the runtime always
+# Copy artefacts as the unprivileged ``flyquery`` user so the runtime always
 # has read access to bundled resources (e.g. resources/prompts/*.yaml)
 # regardless of whatever host umask produced the source tree.
 COPY --from=builder --chown=flyquery:flyquery /app/.venv         /app/.venv

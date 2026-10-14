@@ -16,15 +16,15 @@
 
 ## 1. Overview
 
-flyquery uses seven `FireflyAgent` instances, all built via the lock-step
+flyquery uses seven `FireflyAgent` instances, all built via the shared
 `build_agent` factory from `core/agents/builder.py`. Each agent:
 
 - Has a single `_INSTRUCTIONS` string that defines its behaviour.
 - Takes a structured Pydantic `output_type` — no tool calls; LLM output is
   parsed directly into the schema.
 - Is built fresh per call (`auto_register=False`) to avoid shared state.
-- Wraps in the `DEFAULT_MIDDLEWARE` observability stack (elapsed + token usage
-  recorded to `flyquery_cost_events`).
+- Uses Agentic's logging and observability defaults and the factory's
+  configured prompt-cache policy.
 
 Source of truth: `src/flyquery/core/agents/*.py`.
 
@@ -477,13 +477,33 @@ def build_my_agent(settings):
     )
 ```
 
-The `build_agent` factory (lock-step with flycanon/flyradar) wires:
+The service-specific `build_agent` factory wires:
 - `auto_register=False` — each agent instance is fresh per call; no shared
   pydantic-ai registry state.
-- Observability middleware (`DEFAULT_MIDDLEWARE`) — records `elapsed_ms` and
-  token usage to `flyquery_cost_events`.
+- Agentic's default logging and observability middleware, without duplicate
+  instances. `build_agent_middleware()` adds the configured cache policy.
 - `max_output_tokens` — defaults to `FLYQUERY_AGENT_MAX_OUTPUT_TOKENS=8192`.
   `RenameDetectionAgent` overrides to 2048.
+
+### Provider prompt caching
+
+`FLYQUERY_PROMPT_CACHE` defaults to `on`. Set it to `off`, `0`, `false`, or
+`no` to stop the factory from adding prompt-cache middleware. The factory
+reads the setting each time it constructs an agent; agents already running
+keep their existing policy.
+
+For direct Anthropic models, the policy marks static system instructions for
+a five-minute provider cache. It does not mark conversation messages or tool
+definitions. It adds no shared OpenAI cache routing key and creates no Gemini
+cached-content resources. Claude through Bedrock/OpenRouter and other providers
+receive no additional cache configuration from this policy.
+
+This is provider prompt caching, not a flyquery result cache. Each request
+still runs its agent; SQL results and user/tool responses are not memoized or
+reused by this middleware. Turning the switch off does not disable a provider's
+automatic caching or override cache settings explicitly supplied by a caller.
+The local tests verify the settings received by real `FireflyAgent` runs using
+`TestModel`; they do not measure provider cache hits, billing, or retention.
 
 **Agent test mocking note:** Per the `agent_test_mocking` memory,
 `stream.usage()` and `result.usage()` in mocks must return `None` (not a

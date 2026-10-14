@@ -1,4 +1,5 @@
 # Copyright 2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Multi-arch image build + GHCR push.
 #
@@ -12,16 +13,8 @@
 #                 (the owner is normalised to lower-case below, since
 #                 GHCR requires lower-case repository namespaces).
 #
-# The Dockerfile uses BuildKit named contexts for the pyfly +
-# fireflyframework-agentic sibling repos. We clone them into ./vendor/
-# and pass them via ``build-contexts:`` so the same Dockerfile works
-# both locally (siblings on disk) and in CI.
-#
-# The Docling OCR engine is an opt-in runtime extra (``pip install
-# 'flyquery[docling]'``) selected via ``FLYCANON_PDF_OCR_ENGINE=docling``.
-# The image does not bake docling because the PyTorch + HF wheels add
-# ~2.5 GB per architecture; operators that want layout-aware OCR
-# extend the runtime stage (see docs/deployment.md).
+# The Dockerfile validates the tracked server lock and installs its frozen
+# public dependency graph. No adjacent framework checkout is required.
 
 name: Docker publish (multi-arch)
 
@@ -56,8 +49,6 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  PYFLY_REF: v26.05.05
-  AGENTIC_REF: v26.05.21
 
 jobs:
   publish:
@@ -72,15 +63,6 @@ jobs:
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           name="${GITHUB_REPOSITORY##*/}"
           echo "image=${{ env.REGISTRY }}/${owner}/${name}" >> "$GITHUB_OUTPUT"
-
-      - name: Check out sibling firefly framework repos
-        run: |
-          git clone --depth=1 --branch "$PYFLY_REF" \
-            https://github.com/fireflyframework/fireflyframework-pyfly.git \
-            ./vendor/pyfly
-          git clone --depth=1 --branch "$AGENTIC_REF" \
-            https://github.com/fireflyframework/fireflyframework-agentic.git \
-            ./vendor/fireflyframework-agentic
 
       - uses: docker/setup-qemu-action@v3
         with:
@@ -131,9 +113,6 @@ jobs:
           sbom: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-contexts: |
-            pyfly=./vendor/pyfly
-            fireflyframework-agentic=./vendor/fireflyframework-agentic
           cache-from: type=gha,scope=flyquery
           cache-to: type=gha,mode=max,scope=flyquery
 

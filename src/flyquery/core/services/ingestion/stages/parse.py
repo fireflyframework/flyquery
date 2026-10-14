@@ -56,6 +56,52 @@ def _sanitise_name(name: str) -> str:
     return _SAFE_NAME_RE.sub("_", name).strip("_") or "table"
 
 
+def _period_name_from_header(header: str | None) -> str | None:
+    """Deterministic column name for a header that IS a calendar period.
+
+    ``'2024'`` / ``'FY2024'`` / ``'2024f'`` -> ``year_2024``;
+    ``'2024-12-31'`` / ``'31/12/2024'`` -> ``period_2024_12_31``.
+    Returns None for anything that is not clearly a year/date header (e.g.
+    ``'Operating revenue'``), so only genuine period columns are stabilised.
+    Generic — recognises the period from the source's own header, no domain rule.
+    """
+    if not header:
+        return None
+    s = str(header).strip()
+    if not s or len(s) > 40:
+        return None
+    for pat, idx in (
+        (r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$", (1, 2, 3)),
+        (r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$", (3, 2, 1)),
+    ):
+        m = re.match(pat, s)
+        if m:
+            y, mo, d = int(m.group(idx[0])), int(m.group(idx[1])), int(m.group(idx[2]))
+            if 1900 <= y <= 2100 and 1 <= mo <= 12 and 1 <= d <= 31:
+                return f"period_{y}_{mo:02d}_{d:02d}"
+    m = re.match(r"(?i)^(?:fy[\s_]*)?(\d{4})f?$", s)
+    if m:
+        y = int(m.group(1))
+        if 1900 <= y <= 2100:
+            return f"year_{y}"
+    return None
+
+
+def _apply_deterministic_period_names(originals: list[str], proposed: list[str]) -> list[str]:
+    """Override the LLM proposer for columns whose ORIGINAL header is a year/date,
+    so period columns are named stably + correctly across re-ingests (round-2)."""
+    out = list(proposed)
+    changed = False
+    for i, orig in enumerate(originals):
+        nm = _period_name_from_header(orig)
+        if nm and out[i] != nm:
+            out[i] = nm
+            changed = True
+    if changed:
+        out = _dedupe_names(out, fallback_prefix="period")
+    return out
+
+
 def _sanitise_proposed_name(name: str) -> str:
     """Best-effort enforcement of snake_case identifier rules on agent output."""
     cleaned = _SAFE_NAME_RE.sub("_", name).strip("_").lower()
@@ -161,6 +207,22 @@ async def _propose_meaningful_column_names(
     at least scoped to the section.
     """
     current_names = [c.name for c in mat_result.columns]
+
+    # Deterministically clean year/date headers FIRST -- before the
+    # needs_proposal gate, which skips columns that already look "meaningful"
+    # (a date column does). This turns '2024-12-31' -> period_2024_12_31 and
+    # '2024' -> year_2024 stably across re-ingests, and renames the Parquet so
+    # the stored column matches.
+    period_named = _apply_deterministic_period_names(current_names, list(current_names))
+    if period_named != current_names:
+        await _rename_parquet_columns(
+            parquet_path=parquet_path,
+            current_columns=current_names,
+            proposed_columns=period_named,
+        )
+        mat_result = _rebuild_mat_result(mat_result, period_named)
+        current_names = period_named
+
     if not needs_proposal(current_names):
         return mat_result
 
@@ -181,6 +243,17 @@ async def _propose_meaningful_column_names(
         logger_.info(
             "stage=parse rename_skipped reason=no_api_key fallback_prefix=%s",
             section_prefix,
+        )
+        if fallback == current_names:
+            return mat_result
+        # Rewrite the physical Parquet so its column names match the
+        # section-prefixed fallback we record in the MaterialiseResult --
+        # otherwise the persisted schema_objects names diverge from the
+        # Parquet header and downstream DuckDB stages hit Binder Errors.
+        await _rename_parquet_columns(
+            parquet_path=parquet_path,
+            current_columns=current_names,
+            proposed_columns=fallback,
         )
         return _rebuild_mat_result(mat_result, fallback)
 
@@ -212,6 +285,9 @@ async def _propose_meaningful_column_names(
             exc,
         )
         proposed = fallback
+
+    # Safety net: clean any remaining year/date names the proposer produced.
+    proposed = _apply_deterministic_period_names(current_names, proposed)
 
     if proposed == current_names:
         return mat_result
@@ -245,6 +321,8 @@ def _rebuild_mat_result(
                 data_type=c.data_type,
                 is_nullable=c.is_nullable,
                 position=c.position,
+                # remember the original header iff it actually changed
+                original_name=(c.name if new_names[i] != c.name else None),
             )
             for i, c in enumerate(mat_result.columns)
         ),

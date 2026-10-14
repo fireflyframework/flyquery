@@ -93,43 +93,34 @@ public class Example {
 
 ## listConversations
 
-> listConversations(xAgentToken, xCorrelationId)
+> Mono<PaginatedConversationRead> listConversations(xAgentToken, xCorrelationId)
 
 List conversations for the agent&#39;s workspace (newest first).
 
 ### Example
 
 ```java
-// Import classes:
+import java.time.Duration;
 import com.firefly.flyquery.ApiClient;
-import com.firefly.flyquery.ApiException;
-import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
-import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentConversationsApi;
+import com.firefly.flyquery.model.PaginatedConversationRead;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 public class Example {
     public static void main(String[] args) {
-        ApiClient defaultClient = Configuration.getDefaultApiClient();
-        defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
-
-        AgentConversationsApi apiInstance = new AgentConversationsApi(defaultClient);
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        ApiClient client = new ApiClient();
+        client.setBasePath(System.getenv("FLYQUERY_URL"));
+        client.addDefaultHeader("X-Tenant-Id", System.getenv("FLYQUERY_TENANT_ID"));
+        client.addDefaultHeader("X-Workspace-Id", System.getenv("FLYQUERY_WORKSPACE_ID"));
+        AgentConversationsApi api = new AgentConversationsApi(client);
+        String token = System.getenv("FLYQUERY_AGENT_TOKEN");
         try {
-            apiInstance.listConversations(xAgentToken, xCorrelationId);
-        } catch (ApiException e) {
-            System.err.println("Exception when calling AgentConversationsApi#listConversations");
-            System.err.println("Status code: " + e.getCode());
-            System.err.println("Reason: " + e.getResponseBody());
-            System.err.println("Response headers: " + e.getResponseHeaders());
-            e.printStackTrace();
+            PaginatedConversationRead page = api.listConversations(token, null).block(Duration.ofSeconds(15));
+            if (page == null) throw new IllegalStateException("The API returned no page");
+            System.out.println(page.getItems());
+        } catch (WebClientResponseException e) {
+            System.err.println("HTTP " + e.getStatusCode());
+            throw e;
         }
     }
 }
@@ -145,7 +136,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedConversationRead**](PaginatedConversationRead.md)
 
 ### Authorization
 
@@ -154,7 +145,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details

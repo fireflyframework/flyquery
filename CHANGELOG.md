@@ -5,6 +5,41 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.10.2] - 2026-10-14
+
+### Changed
+
+- Use the public fireflyframework-agentic 26.10.1 wheel with the qualified
+  pyfly 26.06.113 runtime. Track the server dependency lock and validate it
+  before frozen CI and image installs.
+- Apply `FLYQUERY_PROMPT_CACHE` when constructing agents. Enabled mode adds
+  Anthropic instruction-cache hints; disabled mode omits this middleware.
+  User messages, tool results and generated answers are not memoized.
+- Ground queries with bounded value catalogs, scoped relation candidates and
+  persisted conversation snapshot pins. Candidate execution probes pass the
+  registered-table fence and a bounded result limit before candidate selection.
+- Keep nineteen historical shared-source baselines and two explicitly reviewed
+  service variants under source-drift checks.
+
+### Fixed
+
+- Reject missing or unauthorized dataset scope before retrieval or model calls,
+  recording a caller-scoped rejected audit row without reading dataset metadata.
+- Classify original samples before filtering them, and inspect retained profile
+  values before embedding. Redact/reject stores an explicit empty-list denial
+  so profiles cannot reintroduce protected values into schema knowledge.
+- Exclude inactive columns from catalog and retrieval projections. Preserve
+  original Parquet files and conversation snapshot selections.
+- Refresh the OpenAPI Decimal schemas for the resolved Pydantic runtime and
+  align server, actuator, Python and Java SDK release metadata.
+
+A nonempty executed candidate is a selection heuristic, not proof that the SQL
+matches the requested entities or filters. The engine does not enforce its
+statement-timeout setting or provide an operating system sandbox. Deployment
+resource limits do not implement that missing query deadline. Remote object-store
+DuckDB reads are not qualified by the local registered-file tests. PII detection
+covers sampled and retained profile values; it is not a scan of every source row.
+
 ## [26.6.0] - 2026-06-01
 
 ### Fixed — Semantic layer brought up to its documented contract

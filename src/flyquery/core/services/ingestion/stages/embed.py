@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -94,10 +95,16 @@ async def run_embed(
     async with session_factory() as s:
         result = await s.execute(
             sa.text(
+                # profile_json/sample_values_json are pulled in so the embed
+                # text (and thus content_tsv) covers the column's actual
+                # VALUES, making value-bearing columns retrievable by
+                # BM25/vector -- e.g. a question for "Total Revenue" finds
+                # the column whose distinct values include it.
                 """
-                SELECT id, qualified_name, data_type, description, synonyms_json
+                SELECT id, qualified_name, data_type, description, synonyms_json,
+                       profile_json, sample_values_json
                 FROM flyquery_schema_objects
-                WHERE snapshot_id = :sid AND tenant_id = :tenant
+                WHERE snapshot_id = :sid AND tenant_id = :tenant AND is_active = true
                 ORDER BY kind, qualified_name
                 """
             ),
@@ -152,7 +159,61 @@ def _build_embed_text(row: dict) -> str:
             flat = list(synonyms.values())
             if flat:
                 parts.append("Synonyms: " + ", ".join(str(s) for s in flat))
+    values = _render_values(row)
+    if values:
+        parts.append(values)
     return "\n".join(p for p in parts if p)
+
+
+def _render_values(row: dict, *, max_chars: int = 300) -> str:
+    """Compact rendering of a column's actual VALUES for the embed corpus.
+
+    Indexing the values (not just name + description) is what lets a
+    question like "Total Revenue" retrieve the column whose distinct set
+    contains that literal.
+
+    PII safety: prefer the PII-gated ``sample_values_json`` -- the pii_tag
+    stage wipes it to ``[]`` when a redact/reject policy fires, so an empty
+    list here means "do not surface raw samples". When no gated samples are
+    recorded we may use ``profile_json.top_values``. An explicitly empty
+    sample list blocks that fallback, including for low-cardinality data.
+    The result is capped to ``max_chars`` either way.
+    """
+    seen: set[str] = set()
+    uniq: list[str] = []
+
+    # Preferred source: PII-gated samples (empty list = intentionally wiped).
+    samples = row.get("sample_values_json")
+    if samples == []:
+        return ""
+    if isinstance(samples, list) and samples:
+        for v in samples:
+            if v is None:
+                continue
+            s = str(v)
+            if s not in seen:
+                seen.add(s)
+                uniq.append(s)
+    else:
+        # Fallback: stored distinct set (aggregate, low-cardinality).
+        prof = row.get("profile_json")
+        top_values = (prof or {}).get("top_values") if isinstance(prof, dict) else None
+        for tv in top_values or []:
+            v = tv.get("value") if isinstance(tv, dict) else tv
+            if v is None:
+                continue
+            s = str(v)
+            if s not in seen:
+                seen.add(s)
+                uniq.append(s)
+
+    if not uniq:
+        return ""
+    body = " | ".join(uniq)
+    if len(body) > max_chars:
+        # Trim on a value boundary so we never emit a half-truncated literal.
+        body = body[:max_chars].rsplit("|", 1)[0].strip() + " …"
+    return f"Values: {body}"
 
 
 async def _update_object(
