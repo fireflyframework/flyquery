@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -52,6 +53,8 @@ import asyncio
 import os
 import tempfile
 from dataclasses import dataclass
+
+from flyquery.core.services.execution.ast_classifier import AstClassifier
 
 
 @dataclass(frozen=True)
@@ -110,7 +113,7 @@ class DuckDBExecutor:
     4. Return a :class:`DmlMutationResult` with the new Parquet bytes.
 
     :param settings: :class:`FlyquerySettings` — reads ``duckdb_memory_limit``,
-        ``default_statement_timeout_ms``, and ``default_row_cap``.
+        and ``default_row_cap``. Statement timeouts are not enforced by this executor.
     """
 
     def __init__(self, settings) -> None:
@@ -133,7 +136,7 @@ class DuckDBExecutor:
         :return: :class:`ExecutionResult` for SELECT, :class:`DmlMutationResult` for DML,
             or :class:`ExecutionError` on failure
         """
-        return await asyncio.to_thread(self._sync, sql, attached_tables, derived_tables or {})
+        return await asyncio.to_thread(self._sync, sql, dict(attached_tables), dict(derived_tables or {}))
 
     def _sync(
         self,
@@ -142,14 +145,56 @@ class DuckDBExecutor:
         derived_tables: dict[str, str],
     ) -> ExecutionResult | DmlMutationResult | ExecutionError:
         """Synchronous execution body run in a thread pool worker."""
+        classification = AstClassifier().classify(sql)
+        if any(attached_tables.get(name) != path for name, path in derived_tables.items()):
+            return ExecutionError(message="DERIVED snapshot is not registered for this execution")
+        # Actor scopes remain upstream; this boundary confines SQL to the supplied registered snapshots.
+        if (
+            not classification.single_statement
+            or classification.classification not in {"SELECT", "INSERT", "UPDATE", "DELETE"}
+            or classification.unsupported_sql
+        ):
+            return ExecutionError(message="unsupported SQL statement, function, or table source")
+        if any(name not in attached_tables for name in classification.table_refs):
+            return ExecutionError(message="SQL source is not a registered table")
+        if classification.classification != "SELECT" and any(
+            name not in derived_tables for name in classification.table_refs
+        ):
+            return ExecutionError(message="DML source is not a registered DERIVED table")
         try:
             import duckdb
         except ImportError as exc:
             return ExecutionError(message=f"duckdb not installed: {exc}")
 
-        if derived_tables:
+        if classification.classification in {"INSERT", "UPDATE", "DELETE"}:
+            if len(derived_tables) != 1:
+                return ExecutionError(message="DML requires exactly one registered DERIVED target")
             return self._sync_dml(sql, attached_tables, derived_tables, duckdb)
         return self._sync_select(sql, attached_tables, duckdb)
+
+    def _connection(self, duckdb, paths: list[str]):
+        conn = duckdb.connect(
+            ":memory:", config={"autoload_known_extensions": False, "autoinstall_known_extensions": False}
+        )
+        try:
+            # DuckDB freezes allowed_paths when external access is disabled, so finish the exact allowlist first.
+            conn.execute("SET allowed_paths = ?", [sorted(set(paths))])
+            conn.execute("SET enable_external_access=false")
+            conn.execute("SET memory_limit = ?", [self._memory_limit])
+            conn.execute("SET threads=2")
+            conn.execute("SET lock_configuration=true")
+            return conn
+        except Exception:
+            conn.close()
+            raise
+
+    @staticmethod
+    def _identifier(value: str) -> str:
+        return '"' + value.replace('"', '""') + '"'
+
+    @staticmethod
+    def _literal(value: str) -> str:
+        return "'" + value.replace("'", "''") + "'"
 
     def _sync_select(
         self,
@@ -158,14 +203,15 @@ class DuckDBExecutor:
         duckdb,  # noqa: ANN001
     ) -> ExecutionResult | ExecutionError:
         """Execute a SELECT and return rows."""
-        conn = duckdb.connect(":memory:")
+        conn = None
         try:
-            conn.execute(f"SET memory_limit='{self._memory_limit}'")
-            conn.execute("SET threads=2")
+            conn = self._connection(duckdb, list(attached_tables.values()))
 
             # Create a VIEW for each parquet-backed table.
             for name, parquet_path in attached_tables.items():
-                conn.execute(f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{parquet_path}')")
+                conn.execute(
+                    f"CREATE VIEW {self._identifier(name)} AS SELECT * FROM read_parquet({self._literal(parquet_path)})"
+                )
 
             # Wrap in LIMIT row_cap+1 to detect truncation.
             wrapped = f"SELECT * FROM ({sql.rstrip(';')}) AS q LIMIT {self._row_cap + 1}"
@@ -186,7 +232,8 @@ class DuckDBExecutor:
         except Exception as exc:  # noqa: BLE001
             return ExecutionError(message=str(exc))
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
 
     def _sync_dml(
         self,
@@ -211,35 +258,39 @@ class DuckDBExecutor:
         target_name = next(iter(derived_tables))
         current_parquet_path = derived_tables[target_name]
 
-        conn = duckdb.connect(":memory:")
+        conn = None
         tmp_path: str | None = None
 
         try:
-            conn.execute(f"SET memory_limit='{self._memory_limit}'")
-            conn.execute("SET threads=2")
+            fd, tmp_path = tempfile.mkstemp(suffix=".parquet")
+            os.close(fd)
+            conn = self._connection(duckdb, [*attached_tables.values(), current_parquet_path, tmp_path])
 
             # Provide read-only views for all non-target tables.
             for name, path in attached_tables.items():
                 if name == target_name:
                     continue
-                conn.execute(f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{path}')")
+                conn.execute(
+                    f"CREATE VIEW {self._identifier(name)} AS SELECT * FROM read_parquet({self._literal(path)})"
+                )
 
             # Load the DERIVED table as a mutable TABLE (not a VIEW).
             conn.execute(
-                f"CREATE TABLE {target_name} AS SELECT * FROM read_parquet('{current_parquet_path}')"
+                f"CREATE TABLE {self._identifier(target_name)} AS SELECT * FROM read_parquet({self._literal(current_parquet_path)})"
             )
 
             # Execute the DML statement.
             conn.execute(sql.rstrip(";"))
 
             # Count rows in the mutated table.
-            count_cursor = conn.execute(f"SELECT COUNT(*) FROM {target_name}")
+            count_cursor = conn.execute(f"SELECT COUNT(*) FROM {self._identifier(target_name)}")
             rows_affected: int = count_cursor.fetchone()[0]  # type: ignore[index]
 
             # Export the mutated table to a temp Parquet file.
-            fd, tmp_path = tempfile.mkstemp(suffix=".parquet")
-            os.close(fd)
-            conn.execute(f"COPY {target_name} TO '{tmp_path}' (FORMAT PARQUET, COMPRESSION SNAPPY)")
+            # The destination is a new owned scratch file, so no extra atomic-replacement path is needed.
+            conn.execute(
+                f"COPY {self._identifier(target_name)} TO {self._literal(tmp_path)} (FORMAT PARQUET, COMPRESSION SNAPPY, USE_TMP_FILE false)"
+            )
 
             with open(tmp_path, "rb") as fh:
                 new_parquet_bytes = fh.read()
@@ -253,6 +304,7 @@ class DuckDBExecutor:
         except Exception as exc:  # noqa: BLE001
             return ExecutionError(message=str(exc))
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)

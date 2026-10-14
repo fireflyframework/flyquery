@@ -25,7 +25,10 @@ full teardown.
 - Redis (optional; required for `FLYQUERY_EDA_ADAPTER=redis` or
   `FLYQUERY_RATE_LIMIT_BACKEND=redis`).
 - Object storage: local directory, S3 bucket, GCS bucket, or Azure Blob
-  container. IAM/service-account credentials configured.
+  container for storage/ingestion, with IAM/service-account credentials
+  configured. Query execution is qualified for registered local Parquet
+  snapshots accessible to the API process; see the
+  [SQL read boundary](security-model.md#sql-read-boundary).
 - `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY` if using GPT-4o fallback).
 
 ### Step-by-step
@@ -246,23 +249,17 @@ the `TenantContextMiddleware` log output.
 
 ### Agent timeouts
 
-**Symptom:** Query fails with `error_code=AGENT_TIMEOUT` or
-`execution_status=FAILED` after ~30 seconds.
+**Symptom:** The query reports a provider timeout or stalls during execution.
 
-**Cause:** LLM API is slow; `FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` or
-`FLYQUERY_AGENT_MAX_OUTPUT_TOKENS` is too tight.
+**Action:** Identify the stage in the query and agent logs. For a provider
+failure, inspect rate-limit and latency errors from the configured provider.
+For DuckDB, inspect the query plan and reduce expensive scans or joins.
 
-**Fix:**
-```bash
-# Increase statement timeout (ms)
-export FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS=60000
-
-# Check LLM API health
-curl https://api.anthropic.com/v1/messages \
-  -H "x-api-key: $ANTHROPIC_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"claude-haiku-4-5","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}'
-```
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` is currently unenforced by
+DuckDBExecutor, and query requests have no timeout override. Raising it
+does not stop a long-running SQL statement. The SELECT row cap limits
+returned rows, not computation time; see the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 ---
 
@@ -625,7 +622,7 @@ FOLLOW-UP ACTIONS:
 ### Key runbook pointers
 
 - Worker fleet ops → [§7 Worker fleet](#7-worker-fleet) and [workers.md](workers.md)
-- Stuck worker → [§3 Stuck ingest job](#stuck-ingest-job)
+- Stuck worker → [§3 Stuck ingest job](#ingest-job-stuck-in-running)
 - RLS returning empty → [§3 RLS returning zero rows](#rls-returning-zero-rows)
 - GDPR request → [§4 GDPR purge](#4-gdpr-purge-runbook)
 - Scaling → [§8 Scaling up](#8-scaling-up-more-workers)

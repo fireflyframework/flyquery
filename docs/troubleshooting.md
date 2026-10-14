@@ -212,19 +212,12 @@ for the test role setup recipe.
 
 ### Symptom: Query fails with `execution_status=FAILED`, error contains "timeout"
 
-**Root cause A:** DuckDB statement timeout (`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS=30000`).
-Large aggregations on big Parquet files can exceed this.
+`FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS` is currently unenforced by the query
+executor, and `QueryRequest` has no per-query timeout override. Increasing
+that setting cannot fix a DuckDB execution stall. Identify the failing stage
+from the error and logs; see the [SQL read boundary](security-model.md#sql-read-boundary).
 
-**Fix:**
-```bash
-# Increase timeout (ms)
-export FLYQUERY_DEFAULT_STATEMENT_TIMEOUT_MS=120000
-
-# Or use the per-query timeout override:
-POST /api/v1/query {"question": "...", "statement_timeout_ms": 120000}
-```
-
-**Root cause B:** LLM API latency (Anthropic / OpenAI rate limit or slow
+**Root cause A:** LLM API latency (Anthropic / OpenAI rate limit or slow
 response).
 
 **Fix:** Check LLM API status pages. Temporarily switch to fallback model:
@@ -232,7 +225,7 @@ response).
 export FLYQUERY_FALLBACK_MODEL=openai:gpt-4o
 ```
 
-**Root cause C:** `FLYQUERY_AGENT_MAX_OUTPUT_TOKENS` too small for the
+**Root cause B:** `FLYQUERY_AGENT_MAX_OUTPUT_TOKENS` too small for the
 number of tables/columns in the Grounded context.
 
 **Fix:** Increase to 16384 for large schemas.
@@ -299,6 +292,13 @@ POST /api/v1/query:explain {"question": "...", "dataset_id": "..."}
 
 For repeated OOM on the same query, simplify the question or add a WHERE
 clause to scope the data.
+
+For a long-running DuckDB statement, reduce the scan or join work and inspect
+the query plan. The statement-timeout setting currently does not interrupt
+execution; the result row cap limits returned rows, not computation time.
+File-source or unregistered-table rejections are expected policy failures,
+not reasons to enable httpfs or external access. See the
+[SQL read boundary](security-model.md#sql-read-boundary).
 
 ---
 
