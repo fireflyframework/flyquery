@@ -22,9 +22,10 @@ columns are queryable and whether sample values are retained.
 
 PII scanning runs in two places:
 
-1. **Stage 4 (sample)** — before samples are persisted, a scanner tests
-   candidate values. A column that triggers a match never has its sample
-   values written to `schema_objects.sample_values_json`.
+1. **Stage 4 (sample)** — the configured scanner checks the original value
+   batch before filtering it. Redact/reject applies to the column immediately;
+   the stored empty list prevents later profiles from supplying its values.
+   Warn mode keeps only clean samples. A disabled scanner is an explicit opt-out.
 2. **Stage 8 (PII tag)** — the `PIIScanner` port classifies each column
    from `(column_name + description + sample_values)` and sets `pii_tag +
    pii_source` on the `flyquery_schema_objects` row.
@@ -89,9 +90,9 @@ development with synthetic data.
 
 | Policy | What happens on PII match |
 |--------|--------------------------|
-| `warn` | Log the finding; continue. Sample values are persisted. `pii_findings_json` populated on the ingest job. |
-| `redact` (recommended) | Purge `sample_values_json` in the same transaction. Log the finding. Column remains queryable. |
-| `reject` | Set `schema_objects.is_active=false` on the column. Column is not queryable until a human reviews and clears the flag. |
+| `warn` | Tag the column and continue. Sampling still drops individual PII values. Profiles may expose values when clean samples remain; this policy does not promise redaction. |
+| `redact` (recommended) | Tag the column and store `sample_values_json=[]`. Embedding inputs, schema retrieval metadata, and value catalogs cannot recover values from its profile. The column remains queryable. |
+| `reject` | Tag the column, store the empty sample list, and set `is_active=false`. Embedding and retrieval exclude the column until it is reviewed. |
 
 `FLYQUERY_PII_POLICY_RESULTS` controls what happens when PII is detected in
 query result rows (post-execution scan by the Explainer):
@@ -120,16 +121,19 @@ The PII gate runs BEFORE sample persistence on first ingest:
 ```
 Stage 4 (sample):
   For each column value batch:
-    1. Run PIIScanner on the values
-    2. IF match AND policy=redact → discard; do NOT write to sample_values_json
-    3. IF match AND policy=reject → mark column is_active=false; skip sample
-    4. IF match AND policy=warn  → log finding; write sample anyway
-    5. IF no match → write to sample_values_json
+    1. Classify the original values, name, and description
+    2. IF match AND policy=redact → tag; persist []
+    3. IF match AND policy=reject → tag; deactivate column; persist []
+    4. IF match AND policy=warn → tag; persist only individually clean values
+    5. IF no match → persist clean values
+    6. IF all values were filtered or the column was already tagged → persist []
 ```
 
-This ordering ensures that PII values never touch the database, even
-transiently. The scanner runs in memory; values that fail the gate are
-discarded without being committed.
+Filtering a batch must not erase its classification. Otherwise, a generic
+column name could pass the later tag stage while raw profile values reached
+the agents. The empty list is an explicit denial; a missing sample list may
+still use ordinary profile values. Original Parquet files remain unchanged,
+and this sampling policy does not remove source data or stored profiles.
 
 ---
 
