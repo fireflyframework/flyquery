@@ -23,6 +23,7 @@ from flyquery_sdk.models.answer_response import AnswerResponse
 from flyquery_sdk.models.conversation_create import ConversationCreate
 from flyquery_sdk.models.conversation_read import ConversationRead
 from flyquery_sdk.models.conversation_turn_request import ConversationTurnRequest
+from flyquery_sdk.models.paginated_conversation_read import PaginatedConversationRead
 
 from flyquery_sdk.api_client import ApiClient, RequestSerialized
 from flyquery_sdk.api_response import ApiResponse
@@ -381,7 +382,7 @@ class AgentConversationsApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> None:
+    ) -> PaginatedConversationRead:
         """List conversations for the agent's workspace (newest first).
 
 
@@ -421,7 +422,7 @@ class AgentConversationsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': None,
+            '200': "PaginatedConversationRead",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -451,7 +452,7 @@ class AgentConversationsApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[None]:
+    ) -> ApiResponse[PaginatedConversationRead]:
         """List conversations for the agent's workspace (newest first).
 
 
@@ -491,7 +492,7 @@ class AgentConversationsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': None,
+            '200': "PaginatedConversationRead",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -561,7 +562,7 @@ class AgentConversationsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': None,
+            '200': "PaginatedConversationRead",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -605,6 +606,13 @@ class AgentConversationsApi:
         # process the body parameter
 
 
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
 
 
         # authentication setting

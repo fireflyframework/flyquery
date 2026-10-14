@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +47,7 @@ from flyquery.interfaces.conversations import (
     ConversationRead,
     ConversationTurnRequest,
 )
+from flyquery.interfaces.pagination import Paginated
 from flyquery.interfaces.query import AnswerResponse
 from flyquery.web.controllers.conversations_controller import (
     ConversationsController as _UserConversationsController,
@@ -141,7 +143,7 @@ class AgentConversationsController:
     # ------------------------------------------------------------------
 
     @get_mapping("/conversations")
-    async def list_conversations(self, http_request: Request) -> dict:
+    async def list_conversations(self, http_request: Request) -> Paginated[ConversationRead]:
         """List conversations for the agent's workspace (newest first)."""
         await self._verify(http_request, _SCOPE_CONV_READ)
         return await self._delegate.list_conversations(http_request)

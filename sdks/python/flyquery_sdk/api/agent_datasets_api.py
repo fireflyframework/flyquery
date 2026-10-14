@@ -20,6 +20,7 @@ from typing import Optional
 from typing_extensions import Annotated
 from uuid import UUID
 from flyquery_sdk.models.dataset_read import DatasetRead
+from flyquery_sdk.models.paginated_dataset_read import PaginatedDatasetRead
 
 from flyquery_sdk.api_client import ApiClient, RequestSerialized
 from flyquery_sdk.api_response import ApiResponse
@@ -62,7 +63,7 @@ class AgentDatasetsApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> None:
+    ) -> PaginatedDatasetRead:
         """Search / filter datasets visible to this agent's tenant.
 
 
@@ -120,7 +121,7 @@ class AgentDatasetsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': None,
+            '200': "PaginatedDatasetRead",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -156,7 +157,7 @@ class AgentDatasetsApi:
         _content_type: Optional[StrictStr] = None,
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
-    ) -> ApiResponse[None]:
+    ) -> ApiResponse[PaginatedDatasetRead]:
         """Search / filter datasets visible to this agent's tenant.
 
 
@@ -214,7 +215,7 @@ class AgentDatasetsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': None,
+            '200': "PaginatedDatasetRead",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -308,7 +309,7 @@ class AgentDatasetsApi:
         )
 
         _response_types_map: Dict[str, Optional[str]] = {
-            '200': None,
+            '200': "PaginatedDatasetRead",
         }
         response_data = await self.api_client.call_api(
             *_param,
@@ -382,6 +383,13 @@ class AgentDatasetsApi:
         # process the body parameter
 
 
+        # set the HTTP header `Accept`
+        if 'Accept' not in _header_params:
+            _header_params['Accept'] = self.api_client.select_header_accept(
+                [
+                    'application/json'
+                ]
+            )
 
 
         # authentication setting

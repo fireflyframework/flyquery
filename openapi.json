@@ -6368,6 +6368,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[ConversationRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -6613,6 +6620,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[DatasetRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },

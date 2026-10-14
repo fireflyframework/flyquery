@@ -10,7 +10,7 @@ Method | HTTP request | Description
 
 
 # **list_datasets**
-> list_datasets(x_agent_token, q=q, name=name, status=status, workspace_id=workspace_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+> PaginatedDatasetRead list_datasets(x_agent_token, q=q, name=name, status=status, workspace_id=workspace_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
 
 Search / filter datasets visible to this agent's tenant.
 
@@ -19,45 +19,34 @@ Search / filter datasets visible to this agent's tenant.
 * Api Key Authentication (AgentToken):
 
 ```python
-import flyquery_sdk
-from flyquery_sdk.rest import ApiException
-from pprint import pprint
+import asyncio
+import os
 
-# Defining the host is optional and defaults to http://localhost
-# See configuration.py for a list of all supported configuration parameters.
-configuration = flyquery_sdk.Configuration(
-    host = "http://localhost"
-)
+from flyquery_sdk import ApiClient, Configuration
+from flyquery_sdk.api import AgentDatasetsApi
+from flyquery_sdk.exceptions import ApiException
+from flyquery_sdk.models import PaginatedDatasetRead
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
 
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+async def main():
+    async with ApiClient(Configuration(host=os.environ["FLYQUERY_URL"])) as client:
+        client.default_headers.update({
+            "X-Tenant-Id": os.environ["FLYQUERY_TENANT_ID"],
+            "X-Workspace-Id": os.environ["FLYQUERY_WORKSPACE_ID"],
+        })
+        api = AgentDatasetsApi(client)
+        try:
+            page: PaginatedDatasetRead = await api.list_datasets(
+                x_agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+                _request_timeout=15.0,
+            )
+            print(page.total)
+        except ApiException as exc:
+            print(f"HTTP {exc.status}")
+            raise
 
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
-# Enter a context with an instance of the API client
-async with flyquery_sdk.ApiClient(configuration) as api_client:
-    # Create an instance of the API class
-    api_instance = flyquery_sdk.AgentDatasetsApi(api_client)
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
-    q = 'null' # str |  (optional) (default to 'null')
-    name = 'name_example' # str |  (optional)
-    status = 'status_example' # str |  (optional)
-    workspace_id = 'workspace_id_example' # str |  (optional)
-    limit = 100 # int |  (optional) (default to 100)
-    offset = 0 # int |  (optional) (default to 0)
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-
-    try:
-        # Search / filter datasets visible to this agent's tenant.
-        await api_instance.list_datasets(x_agent_token, q=q, name=name, status=status, workspace_id=workspace_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
-    except Exception as e:
-        print("Exception when calling AgentDatasetsApi->list_datasets: %s\n" % e)
+asyncio.run(main())
 ```
 
 
@@ -78,7 +67,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedDatasetRead**](PaginatedDatasetRead.md)
 
 ### Authorization
 
@@ -87,7 +76,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 

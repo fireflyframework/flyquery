@@ -167,6 +167,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[ConversationRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -346,6 +350,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[DatasetRead]"
           description: Successful response
       security:
       - AgentToken: []

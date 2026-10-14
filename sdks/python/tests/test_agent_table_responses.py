@@ -10,8 +10,10 @@ from uuid import uuid4
 
 import pytest
 from flyquery_sdk import ApiClient, Configuration
-from flyquery_sdk.api import AgentTablesApi
+from flyquery_sdk.api import AgentConversationsApi, AgentDatasetsApi, AgentTablesApi
 from flyquery_sdk.models import (
+    PaginatedConversationRead,
+    PaginatedDatasetRead,
     PaginatedSchemaChangeRead,
     PaginatedSchemaObjectRead,
     PaginatedSnapshotRead,
@@ -49,16 +51,18 @@ def page_server():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "operation,page_type",
+    "api_type,operation,page_type",
     [
-        ("list_tables", PaginatedTableRead),
-        ("search_tables", PaginatedTableRead),
-        ("list_snapshots", PaginatedSnapshotRead),
-        ("list_objects", PaginatedSchemaObjectRead),
-        ("list_changes", PaginatedSchemaChangeRead),
+        (AgentTablesApi, "list_tables", PaginatedTableRead),
+        (AgentTablesApi, "search_tables", PaginatedTableRead),
+        (AgentTablesApi, "list_snapshots", PaginatedSnapshotRead),
+        (AgentTablesApi, "list_objects", PaginatedSchemaObjectRead),
+        (AgentTablesApi, "list_changes", PaginatedSchemaChangeRead),
+        (AgentDatasetsApi, "list_datasets", PaginatedDatasetRead),
+        (AgentConversationsApi, "list_conversations", PaginatedConversationRead),
     ],
 )
-async def test_agent_table_reads_return_typed_pages(operation, page_type):
+async def test_agent_table_reads_return_typed_pages(api_type, operation, page_type):
     token = "agt_" + "synthetic-local-fixture" * 2
     workspace = str(uuid4())
     with page_server() as (origin, requests):
@@ -67,9 +71,9 @@ async def test_agent_table_reads_return_typed_pages(operation, page_type):
             parameters = {"x_agent_token": token, "_request_timeout": 5.0}
             if operation == "list_tables":
                 parameters["dataset_id"] = str(uuid4())
-            elif operation != "search_tables":
+            elif operation in {"list_snapshots", "list_objects", "list_changes"}:
                 parameters["table_id"] = str(uuid4())
-            result = await getattr(AgentTablesApi(client), operation)(**parameters)
+            result = await getattr(api_type(client), operation)(**parameters)
             assert isinstance(result, page_type)
             assert result.items == [] and result.total == 0
         assert len(requests) == 1
