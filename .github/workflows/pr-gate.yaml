@@ -229,13 +229,15 @@ jobs:
       - name: Install SDK + dev tooling
         run: |
           uv venv
-          uv pip install --editable ".[dev]" || uv pip install --editable .
-          uv pip install pytest ruff
-      - name: ruff check (advisory)
-        continue-on-error: true
-        run: uv run ruff check flyquery_sdk tests || true
-      - name: pytest (smoke)
-        run: uv run pytest -q tests || echo "no tests directory yet"
+          uv pip install --editable ".[dev]"
+      - name: Check handwritten SDK code
+        run: |
+          uv run ruff check flyquery_sdk/client.py tests examples
+          uv run ruff format --check flyquery_sdk/client.py tests examples
+      - name: Test SDK imports and HTTP contract
+        run: |
+          uv run mypy flyquery_sdk tests
+          uv run pytest -q tests
 
   sdk-java:
     name: SDK Java (25 + Spring Boot 3.5.9)
