@@ -16,16 +16,16 @@ it does not install the flyquery server, pyfly or fireflyframework-agentic.
 
 ## Install
 
-For the 26.10.0 release, install the wheel from GitHub Releases:
+For the 26.10.1 release, install the wheel from GitHub Releases:
 
 ```bash
-uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.0/flyquery_sdk-26.10.0-py3-none-any.whl
+uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.1/flyquery_sdk-26.10.1-py3-none-any.whl
 # Or, in an activated Python environment:
-pip install https://github.com/fireflyframework/flyquery/releases/download/v26.10.0/flyquery_sdk-26.10.0-py3-none-any.whl
+pip install https://github.com/fireflyframework/flyquery/releases/download/v26.10.1/flyquery_sdk-26.10.1-py3-none-any.whl
 ```
 
 The source distribution is attached to the same
-[release](https://github.com/fireflyframework/flyquery/releases/tag/v26.10.0).
+[release](https://github.com/fireflyframework/flyquery/releases/tag/v26.10.1).
 The project publishes Python packages through GitHub Releases. For development,
 run `uv pip install -e './sdks/python[dev]'` from the repository root.
 
