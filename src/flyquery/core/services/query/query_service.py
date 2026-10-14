@@ -1306,19 +1306,23 @@ class QueryService:
                     f"an anchored LIKE; keep the original only if the exclusion is genuinely intended."
                 )
         if self._settings.signed_measure_repair_enabled:
-            hint = await self._signed_measure_hint(sql, ast, col_catalog, dataset_id)
+            hint = await self._signed_measure_hint(sql, ast, col_catalog, dataset_id, bundle)
             if hint:
                 reasons.append(hint)
         return " ".join(reasons) if reasons else None
 
-    async def _signed_measure_hint(self, sql, ast, col_catalog, dataset_id) -> str | None:
+    async def _signed_measure_hint(self, sql, ast, col_catalog, dataset_id, bundle) -> str | None:
         """Probe whether the SQL subtracts a term whose SIGNED measure is already
         stored negative (so subtracting double-counts the sign). Best-effort (#5B)."""
         try:
+            tables = [t for t in ast.table_refs if t]
+            eligible = _eligible_value_columns(col_catalog, tables)
             mixed = {
                 c["qualified_name"].rsplit(".", 1)[-1].lower()
                 for c in col_catalog
-                if c.get("mixed_sign") and value_anchoring.semantic_role(c.get("semantic_type")) == "measure"
+                if _allows_value_access(c)
+                and c.get("mixed_sign")
+                and value_anchoring.semantic_role(c.get("semantic_type")) == "measure"
             }
             if not mixed:
                 return None
@@ -1330,15 +1334,20 @@ class QueryService:
             ]
             if not subtracted:
                 return None
-            tables = [t for t in ast.table_refs if t]
-            if not tables:
+            eligible = {
+                table: columns
+                for table, columns in eligible.items()
+                if any(
+                    term["measure_col"].lower() in columns and term["dim_col"].lower() in columns
+                    for term in subtracted
+                )
+            }
+            if not eligible:
                 return None
-            attached = await self._table_resolver.resolve(dataset_id, tables)
+            attached = await self._resolve_attached_tables(dataset_id, list(eligible), bundle)
             if not attached:
                 return None
-            import asyncio
-
-            offenders = await asyncio.to_thread(_probe_signed_terms, attached, subtracted)
+            offenders = await self._probe_signed_terms(attached, subtracted, eligible)
             if not offenders:
                 return None
             parts = "; ".join(f"{o['dim']} IN {o['literals']} sums to {o['sum']:.0f}" for o in offenders[:6])
@@ -1363,6 +1372,36 @@ class QueryService:
             logger.debug("signed-measure probe failed: %s", exc)
             return None
 
+    async def _probe_signed_terms(
+        self, attached: dict[str, str], terms: list[dict], eligible: dict
+    ) -> list[dict]:
+        offenders: list[dict] = []
+        for term in terms[:6]:
+            # A partial literal set can reverse the sign and produce a false repair.
+            if not term["literals"] or len(term["literals"]) > 25:
+                continue
+            total = None
+            for table, path in attached.items():
+                columns = eligible.get(table, {})
+                measure = columns.get(term["measure_col"].lower())
+                dimension = columns.get(term["dim_col"].lower())
+                if measure is None or dimension is None:
+                    continue
+                in_list = ", ".join(_sql_literal(str(lit)) for lit in term["literals"])
+                sql = (
+                    f"SELECT SUM(TRY_CAST({_sql_identifier(measure['column'])} AS DOUBLE)) AS total "
+                    f"FROM {_sql_identifier(table)} "
+                    f"WHERE CAST({_sql_identifier(dimension['column'])} AS VARCHAR) IN ({in_list})"
+                )
+                result = await self._executor.execute(sql, {table: path})
+                if isinstance(result, ExecutionResult) and result.rows:
+                    value = result.rows[0].get("total")
+                    if value is not None:
+                        total = (total or 0.0) + float(value)
+            if total is not None and total < 0:
+                offenders.append({"dim": term["dim_col"], "literals": term["literals"], "sum": total})
+        return offenders
+
     async def _resolve_entities(
         self,
         dataset_id: uuid.UUID,
@@ -1383,6 +1422,7 @@ class QueryService:
         if not literals:
             return empty
 
+        col_catalog = [column for column in col_catalog if _allows_value_access(column)]
         hierarchy = value_anchoring.relationship_intent(question)
         # round-2 #1: a term that umbrellas >=2 values of one column -> a group.
         groups: list[dict] = []
@@ -1434,123 +1474,86 @@ class QueryService:
             if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
         ]
         table_names = [t for t in dict.fromkeys(table_names) if t]
-        if not table_names:
+        eligible = _eligible_value_columns(bundle.get("column_catalog") or [], table_names)
+        eligible = {
+            table: {
+                name: column
+                for name, column in columns.items()
+                if str(column.get("data_type") or "")
+                .upper()
+                .startswith(("VARCHAR", "TEXT", "STRING", "CHAR"))
+            }
+            for table, columns in eligible.items()
+        }
+        eligible = {table: columns for table, columns in eligible.items() if columns}
+        literals = list(dict.fromkeys(lit.lower() for lit in literals if lit))[
+            : self._settings.entity_resolution_max_literals
+        ]
+        if not eligible or not literals:
             return []
-        attached = await self._table_resolver.resolve(dataset_id, table_names)
-        if not attached:
-            return []
-        import asyncio
-
-        return await asyncio.to_thread(_scan_sync, attached, literals)
-
-
-def _probe_signed_terms(attached_tables: dict[str, str], terms: list[dict]) -> list[dict]:
-    """Sum each subtracted term's measure over its line-items; report the ones that
-    sum NEGATIVE (already stored negative → subtracting double-counts). Best-effort."""
-    try:
-        import duckdb
-    except ImportError:  # pragma: no cover
-        return []
-    paths = list(attached_tables.values())
-    if not paths:
-        return []
-    offenders: list[dict] = []
-    conn = None
-    try:
-        conn = duckdb.connect(":memory:")
-        conn.execute("SET threads=2")
-        for t in terms:
-            mq = t["measure_col"].replace(chr(34), chr(34) * 2)
-            dq = t["dim_col"].replace(chr(34), chr(34) * 2)
-            in_list = ", ".join("'" + str(lit).replace("'", "''") + "'" for lit in t["literals"])
-            total = None
-            for path in paths:
-                try:
-                    cols = {
-                        c[0].lower()
-                        for c in conn.execute(f"DESCRIBE SELECT * FROM read_parquet('{path}')").fetchall()
-                    }
-                    if t["measure_col"].lower() not in cols or t["dim_col"].lower() not in cols:
-                        continue
-                    s = conn.execute(
-                        f"SELECT SUM(TRY_CAST(\"{mq}\" AS DOUBLE)) FROM read_parquet('{path}') "
-                        f'WHERE CAST("{dq}" AS VARCHAR) IN ({in_list})'
-                    ).fetchone()
-                    if s and s[0] is not None:
-                        total = (total or 0.0) + float(s[0])
-                except Exception:  # noqa: BLE001
-                    continue
-            if total is not None and total < 0:
-                offenders.append({"dim": t["dim_col"], "literals": t["literals"], "sum": total})
-    except Exception:  # noqa: BLE001
-        return offenders
-    finally:
-        if conn is not None:
-            conn.close()
-    return offenders
-
-
-def _scan_sync(attached_tables: dict[str, str], literals: list[str]) -> list[dict]:
-    """Find which column stores each question literal: one bounded scan per table.
-
-    For each table we run a single pass that, per VARCHAR column, returns the
-    first stored value equal (case-insensitively) to any of the literals. This
-    resolves high-cardinality entities (person/brand names) the low-cardinality
-    value catalogue can't carry. Best-effort + dataset-agnostic.
-    """
-    try:
-        import duckdb
-    except ImportError:  # pragma: no cover
-        return []
-    lits = [s.lower() for s in literals if s]
-    if not lits:
-        return []
-    in_list = ", ".join("'" + s.replace("'", "''") + "'" for s in lits)
-    found: list[dict] = []
-    seen: set[tuple[str, str]] = set()
-    for tname, path in attached_tables.items():
-        conn = None
-        try:
-            conn = duckdb.connect(":memory:")
-            conn.execute("SET threads=2")
-            desc = conn.execute(f"DESCRIBE SELECT * FROM read_parquet('{path}')").fetchall()
-            vcols = [
-                d[0] for d in desc if str(d[1]).upper().startswith(("VARCHAR", "TEXT", "STRING", "CHAR"))
-            ][:80]
-            if not vcols:
+        attached = await self._resolve_attached_tables(dataset_id, list(eligible), bundle)
+        in_list = ", ".join(_sql_literal(lit) for lit in literals)
+        found: list[dict] = []
+        for table, path in attached.items():
+            columns = list(eligible.get(table, {}).values())[:80]
+            if not columns:
                 continue
-            cols_sql = []
-            for i, c in enumerate(vcols):
-                cq = c.replace(chr(34), chr(34) * 2)
-                pred = f'lower(CAST("{cq}" AS VARCHAR)) IN ({in_list})'
-                cols_sql.append(f'MAX(CASE WHEN {pred} THEN CAST("{cq}" AS VARCHAR) END) AS m{i}')
-                # match_count: how many rows this column has the literal in. A value
-                # that REPEATS is a grouping/parent key; one that appears once is an
-                # identity. Same single scan -- no extra cost.
-                cols_sql.append(f"SUM(CASE WHEN {pred} THEN 1 ELSE 0 END) AS c{i}")
-            row = conn.execute(f"SELECT {', '.join(cols_sql)} FROM read_parquet('{path}')").fetchone()
-            if not row:
+            expressions: list[str] = []
+            for i, column in enumerate(columns):
+                identifier = _sql_identifier(column["column"])
+                predicate = f"lower(CAST({identifier} AS VARCHAR)) IN ({in_list})"
+                expressions.append(
+                    f"MAX(CASE WHEN {predicate} THEN CAST({identifier} AS VARCHAR) END) AS m{i}"
+                )
+                expressions.append(f"SUM(CASE WHEN {predicate} THEN 1 ELSE 0 END) AS c{i}")
+            result = await self._executor.execute(
+                f"SELECT {', '.join(expressions)} FROM {_sql_identifier(table)}", {table: path}
+            )
+            if not isinstance(result, ExecutionResult) or not result.rows:
                 continue
-            for i, c in enumerate(vcols):
-                val = row[2 * i]
-                cnt = row[2 * i + 1]
-                if val is None:
+            row = result.rows[0]
+            for i, column in enumerate(columns):
+                value = row.get(f"m{i}")
+                if value is None:
                     continue
-                key = (str(val).lower(), f"{tname}.{c}")
-                if key in seen:
-                    continue
-                seen.add(key)
                 found.append(
                     {
-                        "literal": str(val),
-                        "column": f"{tname}.{c}",
-                        "value": val,
-                        "match_count": int(cnt or 0),
+                        "literal": str(value),
+                        "column": column["qualified_name"],
+                        "value": value,
+                        "match_count": int(row.get(f"c{i}") or 0),
                     }
                 )
-        except Exception:  # noqa: BLE001 - resolution is best-effort
+        return found
+
+
+def _allows_value_access(column: dict) -> bool:
+    samples = column.get("sample_values_json")
+    return (
+        column.get("value_access") is True
+        and samples != []
+        and (samples is None or isinstance(samples, list))
+    )
+
+
+def _eligible_value_columns(catalog: list[dict], tables: list[str]) -> dict[str, dict[str, dict]]:
+    eligible: dict[str, dict[str, dict]] = {}
+    blocked = {column.get("qualified_name") for column in catalog if not _allows_value_access(column)}
+    for column in catalog:
+        qualified = column.get("qualified_name")
+        if not isinstance(qualified, str) or qualified in blocked or not _allows_value_access(column):
             continue
-        finally:
-            if conn is not None:
-                conn.close()
-    return found
+        parent, separator, name = qualified.rpartition(".")
+        table = parent.rsplit(".", 1)[-1]
+        if not separator or not name or table not in tables:
+            continue
+        eligible.setdefault(table, {})[name.lower()] = {**column, "column": name}
+    return eligible
+
+
+def _sql_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _sql_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
