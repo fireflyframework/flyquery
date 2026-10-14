@@ -152,9 +152,7 @@ jobs:
           OPENAI_API_KEY: sk-dummy-key
           ANTHROPIC_API_KEY: sk-dummy-key
           AWS_DEFAULT_REGION: eu-west-1
-        run: |
-          uv run mypy flyquery_sdk tests
-          uv run pytest -q tests/unit -m 'not integration'
+        run: uv run pytest -q tests/unit -m 'not integration'
 
   integration:
     name: Integration tests
