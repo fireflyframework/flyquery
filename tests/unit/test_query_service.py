@@ -716,3 +716,39 @@ async def test_conversation_reuses_the_actual_first_snapshot_after_reingestion(t
     assert second.preview == [{"total": 10}]
     assert second.snapshot_pins == first.snapshot_pins
     assert conversation.turn["snapshot_pins_json"] == first.snapshot_pins
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("missing_scope", [True, False])
+async def test_admission_denial_precedes_retrieval_and_agent_calls(missing_scope):
+    retrievals = []
+
+    class Retriever(_FakeRetriever):
+        async def retrieve(self, *args, **kwargs):
+            retrievals.append(kwargs)
+            return await super().retrieve(*args, **kwargs)
+
+    generation = _CountingAgent(_make_candidates("SELECT 1 AS value"))
+    grounding = _CountingAgent(_make_grounded())
+    svc = _make_service(generation_agent=generation)
+    svc._retriever = Retriever()
+    svc._grounding_agent = grounding
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="synthetic denied request",
+        scopes=set() if missing_scope else {"flyquery.query:read"},
+        dataset_allowlist=None if missing_scope else set(),
+    )
+    assert result.execution_status == "REJECTED_BY_FIREWALL"
+    assert result.sql is None
+    assert retrievals == []
+    assert grounding.calls == 0
+    assert generation.calls == 0
+    receipt = svc._query_repo.created_queries[0]
+    assert receipt["dataset_id"] is None
+    assert receipt["executed_sql"] is None
+    assert receipt["candidates_json"] == []
+    assert receipt["retries"] == 0
+    assert receipt["error_json"]["code"] == "SCOPE_ADMISSION_DENIED"

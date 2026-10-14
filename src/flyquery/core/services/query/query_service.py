@@ -626,6 +626,45 @@ class QueryService:
         """
         start_ms = time.monotonic_ns() // 1_000_000
 
+        if not scopes.intersection(
+            {"flyquery.query:read", "flyquery.sql:execute", "flyquery.derived:write", "*"}
+        ) or (dataset_allowlist is not None and str(dataset_id) not in dataset_allowlist):
+            elapsed = (time.monotonic_ns() // 1_000_000) - start_ms
+            # Retain caller-supplied denial evidence without attaching the
+            # record to an unauthorized dataset or invoking retrieval/models.
+            query_id = await self._query_repo.create_query(
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                dataset_id=None,
+                question=question,
+                semantic_path_taken=None,
+                candidates_json=[],
+                chosen_candidate_index=None,
+                executed_sql=None,
+                ast_classification=None,
+                execution_status="REJECTED_BY_FIREWALL",
+                retries=0,
+                row_count=None,
+                elapsed_ms=elapsed,
+                clarification_emitted=False,
+                clarification_json=None,
+                pii_findings_json=None,
+                error_json={"code": "SCOPE_ADMISSION_DENIED", "requested_dataset_id": str(dataset_id)},
+            )
+            return AnswerResult(
+                query_id=query_id,
+                sql=None,
+                execution_status="REJECTED_BY_FIREWALL",
+                preview=None,
+                row_count=None,
+                truncated=False,
+                elapsed_ms=elapsed,
+                chart_hint=None,
+                explanation=None,
+                clarification=None,
+                grounded_summary=None,
+            )
+
         # ------------------------------------------------------------------
         # 1. Hybrid retrieval
         # ------------------------------------------------------------------
