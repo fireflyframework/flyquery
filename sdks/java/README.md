@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="../../docs/assets/logo.png" alt="flyquery" width="380" />
+<img src="../../docs/assets/logo.png" alt="flyquery" width="100%" />
 
 ### **Java SDK** &nbsp;&middot;&nbsp; Spring Boot 3.5.9 &nbsp;&middot;&nbsp; Java 25 &nbsp;&middot;&nbsp; WebFlux
 
@@ -9,7 +9,7 @@
 ---
 
 Spring-Boot-native Java client for the
-[flyquery](https://github.com/firefly-operationOS/flyquery) Tabular
+[flyquery](https://github.com/fireflyframework/flyquery) Tabular
 Intelligence service — Text-to-SQL over user-uploaded structured
 files.
 
@@ -214,7 +214,7 @@ The service deduplicates on the (token-prefix, key) pair for 24 hours.
 Events. WebClient exposes them as a streaming `Flux`. The generated
 methods return `Flux<ServerSentEvent<JsonNode>>`-style frames; the
 event sequence is documented in
-[`docs/pipeline.md`](https://github.com/firefly-operationOS/flyquery/blob/main/docs/pipeline.md):
+[`docs/pipeline.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/pipeline.md):
 `schema_linked → sql_generated → executed → explained → final`,
 with an optional `clarification` frame when Grounding confidence is
 below threshold.
@@ -253,7 +253,7 @@ Common error codes:
 
 The 18 API classes mirror the resource families exposed by the
 service. Per-family methods cover the endpoints documented in
-[`docs/api-reference.md`](https://github.com/firefly-operationOS/flyquery/blob/main/docs/api-reference.md).
+[`docs/api-reference.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/api-reference.md).
 
 | Java class                | Resource family                  |
 |---------------------------|----------------------------------|
@@ -307,8 +307,8 @@ License 2.0; the SDK is the Apache-licensed wire-protocol client.
 
 ## Links
 
-- Service repo: <https://github.com/firefly-operationOS/flyquery>
-- Documentation index: [`docs/README.md`](https://github.com/firefly-operationOS/flyquery/blob/main/docs/README.md)
-- API reference: [`docs/api-reference.md`](https://github.com/firefly-operationOS/flyquery/blob/main/docs/api-reference.md)
-- Wire payloads: [`docs/payload-reference.md`](https://github.com/firefly-operationOS/flyquery/blob/main/docs/payload-reference.md)
-- Changelog: [`CHANGELOG.md`](https://github.com/firefly-operationOS/flyquery/blob/main/CHANGELOG.md)
+- Service repo: <https://github.com/fireflyframework/flyquery>
+- Documentation index: [`docs/README.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/README.md)
+- API reference: [`docs/api-reference.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/api-reference.md)
+- Wire payloads: [`docs/payload-reference.md`](https://github.com/fireflyframework/flyquery/blob/main/docs/payload-reference.md)
+- Changelog: [`CHANGELOG.md`](https://github.com/fireflyframework/flyquery/blob/main/CHANGELOG.md)

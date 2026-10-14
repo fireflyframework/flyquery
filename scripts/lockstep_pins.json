@@ -19,5 +19,5 @@
   "src/flyquery/web/conventions/middleware.py": "d5db547bf55025c20693d496cafaedbb4ab341dd4ad40940e1635d75caf1158b",
   "src/flyquery/web/conventions/redis_idempotency.py": "d98a8a1890595116bb1956459a663b8cdf0d28841786cf1039c29f1957faee20",
   "src/flyquery/web/conventions/validation.py": "8acd98b89749ad89ef4fb0ee00f8116363ad26e67339331a2a18fe386a89bda4",
-  "src/flyquery/web/openapi_override.py": "3b15685106c9eef4ceb3bd10316c1b834cae52295dc7937c80048a976a537dde"
+  "src/flyquery/web/openapi_override.py": "878219bc713efe57a9206a3bc0313a56e5fe7006cc86e8610504d939611af099"
 }

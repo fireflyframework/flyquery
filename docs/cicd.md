@@ -146,8 +146,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/firefly-operationos/flyquery:${{ github.ref_name }}
-            ghcr.io/firefly-operationos/flyquery:latest
+            ghcr.io/fireflyframework/flyquery:${{ github.ref_name }}
+            ghcr.io/fireflyframework/flyquery:latest
 ```
 
 The `Dockerfile` uses a multi-stage build:
@@ -349,3 +349,8 @@ env:
 Secrets are stored in GitHub repository settings → Secrets and variables.
 `FLYCANON_PINNED_SHA` and `FLYRADAR_PINNED_SHA` are Variables (not secrets;
 they don't need encryption).
+
+## Repository and package namespaces
+
+See [branding.md](branding.md#package-registries) for the canonical source
+URLs and the publication checks required before using the new package namespace.

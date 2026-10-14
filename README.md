@@ -1,6 +1,11 @@
 <div align="center">
 
-<img src="docs/assets/logo.png" alt="flyquery — tabular intelligence" width="520" />
+<picture>
+  <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/assets/brand/banner-dark-mobile.svg">
+  <source media="(max-width: 600px)" srcset="docs/assets/brand/banner-light-mobile.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/banner-dark.svg">
+  <img src="docs/assets/brand/banner-light.svg" alt="flyquery by Firefly" width="100%">
+</picture>
 
 ### **Tabular Intelligence**
 
@@ -292,6 +297,13 @@ Lock-step modules (`web/conventions/*`, `agent_deps.py`, `agent_token_service.py
 See [docs/architecture.md](docs/architecture.md) for the full picture.
 
 ---
+
+## Repository and identity
+
+Source, issues and release downloads are hosted under the
+[fireflyframework organization](https://github.com/fireflyframework/flyquery).
+See [identity and package registries](docs/branding.md) for banner provenance
+and the distinction between source transfers and historical package namespaces.
 
 ## License
 

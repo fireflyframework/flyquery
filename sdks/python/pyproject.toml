@@ -15,7 +15,7 @@ keywords = [
   "openapi-client",
   "asyncio",
   "duckdb",
-  "firefly-operationos",
+  "fireflyframework",
 ]
 requires-python = ">=3.9"
 
@@ -61,11 +61,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage      = "https://github.com/firefly-operationOS/flyquery"
-Repository    = "https://github.com/firefly-operationOS/flyquery"
-Documentation = "https://github.com/firefly-operationOS/flyquery/blob/main/docs/README.md"
-Issues        = "https://github.com/firefly-operationOS/flyquery/issues"
-Changelog     = "https://github.com/firefly-operationOS/flyquery/blob/main/CHANGELOG.md"
+Homepage      = "https://github.com/fireflyframework/flyquery"
+Repository    = "https://github.com/fireflyframework/flyquery"
+Documentation = "https://github.com/fireflyframework/flyquery/blob/main/docs/README.md"
+Issues        = "https://github.com/fireflyframework/flyquery/issues"
+Changelog     = "https://github.com/fireflyframework/flyquery/blob/main/CHANGELOG.md"
 
 [tool.poetry]
 requires-poetry = ">=2.0"

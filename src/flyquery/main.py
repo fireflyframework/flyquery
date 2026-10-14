@@ -50,7 +50,7 @@ _DESCRIPTION = (
     "variants). Materialises uploads to Parquet on object storage; "
     "indexes a long-lived schema knowledge base; answers natural-"
     "language questions via a multi-agent pipeline. Part of "
-    "Firefly OperationOS."
+    "Firefly Framework."
 )
 
 # Build PyFlyApplication: loads pyfly.yaml, scans packages, prepares the

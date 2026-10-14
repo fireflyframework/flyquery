@@ -1,6 +1,6 @@
 /*
  * flyquery
- * Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2 variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly OperationOS.
+ * Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2 variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly Framework.
  *
  * The version of the OpenAPI document: 26.6.0
  * 

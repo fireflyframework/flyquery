@@ -15,7 +15,7 @@
 # Notes
 # -----
 # * pyfly + fireflyframework-agentic live in the public
-#   ``fireflyframework`` org (NOT ``firefly-operationOS``). The
+#   ``fireflyframework`` organization. The
 #   per-job ``Check out sibling firefly framework repos`` step
 #   clones the tagged refs into ``./vendor/`` and ``sed``-rewrites
 #   ``[tool.uv.sources]`` to point there for the duration of CI.

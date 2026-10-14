@@ -142,7 +142,7 @@ docker pull ghcr.io/firefly-operationos/flyquery:v26.5.10
 docker run --rm ghcr.io/firefly-operationos/flyquery:v26.5.10 flyquery version
 
 # Python SDK from Release asset
-uv add https://github.com/firefly-operationOS/flyquery/releases/download/v26.5.10/flyquery_sdk-26.5.10-py3-none-any.whl
+uv add https://github.com/fireflyframework/flyquery/releases/download/v26.5.10/flyquery_sdk-26.5.10-py3-none-any.whl
 
 # Java SDK from GitHub Packages
 # (settings.xml must have the firefly-operationOS GitHub Packages repo)
@@ -173,3 +173,8 @@ revision).
 - [ ] `publish-sdks` Python job uploaded wheel + sdist to the Release
 - [ ] GitHub Release page shows the auto-generated notes
 - [ ] CHANGELOG.md `[X.Y.Z]` section matches what shipped
+
+## Repository and package namespaces
+
+See [branding.md](branding.md#package-registries) for the canonical source
+URLs and the publication checks required before using the new package namespace.

@@ -10,8 +10,7 @@
 #   * Platforms : linux/amd64, linux/arm64
 #   * Registry  : ghcr.io/<owner>/<repo>
 #                 (the owner is normalised to lower-case below, since
-#                 GHCR rejects upper-case namespaces -- ``firefly-operationOS``
-#                 -> ``firefly-operationos``).
+#                 GHCR requires lower-case repository namespaces).
 #
 # The Dockerfile uses BuildKit named contexts for the pyfly +
 # fireflyframework-agentic sibling repos. We clone them into ./vendor/
@@ -112,7 +111,7 @@ jobs:
             type=raw,value=manual-${{ github.run_id }},enable=${{ github.event_name == 'workflow_dispatch' }}
           labels: |
             org.opencontainers.image.title=flyquery
-            org.opencontainers.image.description=flyquery -- Operational Structured-Data Intelligence (upload-driven). Multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + compression variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly OperationOS.
+            org.opencontainers.image.description=flyquery -- Operational Structured-Data Intelligence (upload-driven). Multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + compression variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly Framework.
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.vendor=Firefly Software Foundation
@@ -125,14 +124,9 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          # provenance + sbom attestations require GitHub
-          # 'Build & Validate Attestations' which is an Enterprise /
-          # paid org feature. firefly-operationOS is on the free tier
-          # so the attestation persist call returns
-          # 'Feature not available for the firefly-operationOS
-          # organization' and fails the build. Disable both flags
-          # here; the optional attest-build-provenance step below
-          # is already wrapped with continue-on-error.
+          # Preserve the existing publication policy during the source transfer.
+          # Re-enable these only after attestation support is verified for the
+          # destination organization; the separate provenance step is advisory.
           provenance: false
           sbom: false
           tags: ${{ steps.meta.outputs.tags }}
