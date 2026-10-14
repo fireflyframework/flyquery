@@ -652,3 +652,67 @@ async def test_rejected_advisory_sql_keeps_the_executed_query_and_result_togethe
     assert result.sql == original_sql
     assert result.preview == [{"value": 7}]
     assert repo.created_queries[0]["executed_sql"] == original_sql
+
+
+@pytest.mark.asyncio
+async def test_conversation_reuses_the_actual_first_snapshot_after_reingestion(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor
+
+    old_snapshot, new_snapshot = str(uuid.uuid4()), str(uuid.uuid4())
+    paths = {}
+    for snapshot, value in ((old_snapshot, 10), (new_snapshot, 99)):
+        path = tmp_path / f"{snapshot}.parquet"
+        pq.write_table(pa.table({"total": [value]}), path)
+        paths[snapshot] = str(path)
+
+    class Settings:
+        duckdb_memory_limit = "256MB"
+        default_row_cap = 100
+
+    class Resolver(_TableAwareResolver):
+        current = old_snapshot
+
+        async def current_snapshots(self, dataset_id, table_names):
+            return {name: self.current for name in table_names}
+
+        async def resolve(self, dataset_id, table_names, object_store_base=None, pins=None):
+            return {name: paths[(pins or {}).get(name, self.current)] for name in table_names}
+
+    class Conversation:
+        turn = None
+
+        async def last_turn(self, conversation_id):
+            return self.turn
+
+        async def append_turn(self, **kwargs):
+            self.turn = kwargs
+
+    resolver = Resolver("orders")
+    conversation = Conversation()
+    svc = _make_service(
+        candidates=_make_candidates("SELECT total FROM orders"),
+        executor=DuckDBExecutor(Settings()),
+        table_resolver=resolver,
+    )
+    svc._conversation_service = conversation
+    arguments = {
+        "tenant_id": "ten-a",
+        "workspace_id": uuid.uuid4(),
+        "dataset_id": uuid.uuid4(),
+        "conversation_id": uuid.uuid4(),
+        "question": "synthetic snapshot",
+        "scopes": {"flyquery.query:read"},
+    }
+    first = await svc.answer(**arguments)
+    assert first.preview == [{"total": 10}]
+    assert first.snapshot_pins == {"orders": old_snapshot}
+    assert conversation.turn["snapshot_pins_json"] == first.snapshot_pins
+
+    resolver.current = new_snapshot
+    second = await svc.answer(**arguments)
+    assert second.preview == [{"total": 10}]
+    assert second.snapshot_pins == first.snapshot_pins
+    assert conversation.turn["snapshot_pins_json"] == first.snapshot_pins

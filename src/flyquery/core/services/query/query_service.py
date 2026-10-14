@@ -662,6 +662,7 @@ class QueryService:
 
         bundle["starting_point_sql"] = starting_point_sql
         bundle["prior_table_qnames"] = prior_table_qnames
+        bundle["snapshot_pins"] = dict(prior_snapshot_pins)
 
         # ------------------------------------------------------------------
         # 3. Grounding — pydantic-ai's Agent.run expects a STRING prompt,
@@ -972,6 +973,9 @@ class QueryService:
         # ------------------------------------------------------------------
         # 13. Persist conversation turn (Phase E drill-down)
         # ------------------------------------------------------------------
+        execution_snapshot_pins = {
+            name: bundle["snapshot_pins"][name] for name in ast.table_refs if name in bundle["snapshot_pins"]
+        }
         if (
             conversation_id is not None
             and self._conversation_service is not None
@@ -985,7 +989,7 @@ class QueryService:
                 executed_sql=chosen_sql,
                 summary=explanation_obj.summary if explanation_obj else None,
                 table_qnames_json=list(ast.table_refs),
-                snapshot_pins_json=prior_snapshot_pins,
+                snapshot_pins_json=execution_snapshot_pins,
                 elapsed_ms=elapsed,
             )
 
@@ -1001,6 +1005,7 @@ class QueryService:
             explanation=explanation_obj.summary if explanation_obj else None,
             clarification=clarification,
             grounded_summary=self._grounded_summary(grounded),
+            snapshot_pins=execution_snapshot_pins,
         )
 
     # ------------------------------------------------------------------
@@ -1163,13 +1168,24 @@ class QueryService:
                 "error": None,
             }
 
-        attached = await self._table_resolver.resolve(dataset_id, list(ast.table_refs))
+        attached = await self._resolve_attached_tables(dataset_id, list(ast.table_refs), bundle)
         result = await self._executor.execute(sql, attached)
         if isinstance(result, ExecutionResult):
             status = "ok" if result.row_count > 0 else "empty"
         else:
             status = "error"
         return {"status": status, "result": result, "ast": ast, "error": None}
+
+    async def _resolve_attached_tables(self, dataset_id, table_names: list[str], bundle: dict) -> dict:
+        pins = bundle.setdefault("snapshot_pins", {})
+        unpinned = [name for name in table_names if name not in pins]
+        if unpinned:
+            pins.update(await self._table_resolver.current_snapshots(dataset_id, unpinned))
+        # Resolve using captured IDs so re-ingestion cannot change the data
+        # between candidate selection, repair, and a later conversation turn.
+        return await self._table_resolver.resolve(
+            dataset_id, table_names, pins={name: pins[name] for name in table_names if name in pins}
+        )
 
     def _needs_repair(self, result, sql: str) -> bool:
         """A query needs repair if it errored, is degenerate, or ran to 0 rows
