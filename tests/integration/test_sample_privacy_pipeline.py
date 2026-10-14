@@ -45,6 +45,10 @@ class _CaptureEmbedder:
         ("warn", "regex", ["ordinary", "fixture@example.test"]),
         ("redact", "disabled", ["fixture@example.test"]),
         ("redact", "regex", ["alpha", "beta"]),
+        ("redact", "regex", [f"ordinary-{i}" for i in range(8)] + ["fixture@example.test"]),
+        ("reject", "regex", [f"ordinary-{i}" for i in range(8)] + ["fixture@example.test"]),
+        ("warn", "regex", [f"ordinary-{i}" for i in range(8)] + ["fixture@example.test"]),
+        ("redact", "disabled", [f"ordinary-{i}" for i in range(8)] + ["fixture@example.test"]),
     ],
 )
 async def test_original_pii_decision_survives_profile_and_retrieval(tmp_path, policy, scanner, values):
@@ -112,7 +116,7 @@ async def test_original_pii_decision_survives_profile_and_retrieval(tmp_path, po
                 )
             )
         settings = SimpleNamespace(
-            pii_scanner=scanner, pii_policy_samples=policy, sample_n=10, profile_row_threshold=1000
+            pii_scanner=scanner, pii_policy_samples=policy, sample_n=8, profile_row_threshold=1000
         )
         arguments = {
             "tenant_id": tenant,
@@ -148,17 +152,17 @@ async def test_original_pii_decision_survives_profile_and_retrieval(tmp_path, po
                     assert stored.is_active is False
                     assert not hits and not catalog and not embedder.inputs
             elif scanner == "disabled":
-                assert stored.sample_values_json == values
+                assert stored.sample_values_json == values[:8]
                 assert stored.pii_tag is None
                 assert "fixture@example.test" in rendered
             elif policy == "warn":
                 assert stored.pii_tag == "EMAIL"
                 assert stored.is_active
-                assert stored.sample_values_json == [v for v in values if "@" not in v]
-                if "ordinary" in values:
+                assert stored.sample_values_json == [v for v in values[:8] if "@" not in v]
+                if any(value.startswith("ordinary") for value in values):
                     assert "fixture@example.test" in rendered
             else:
-                assert stored.sample_values_json == values
+                assert stored.sample_values_json == values[:8]
                 assert stored.pii_tag is None
                 assert all(value in rendered for value in values)
         assert hashlib.sha256(path.read_bytes()).hexdigest() == original

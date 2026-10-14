@@ -26,9 +26,10 @@ PII scanning runs in two places:
    batch before filtering it. Redact/reject applies to the column immediately;
    the stored empty list prevents later profiles from supplying its values.
    Warn mode keeps only clean samples. A disabled scanner is an explicit opt-out.
-2. **Stage 8 (PII tag)** — the `PIIScanner` port classifies each column
-   from `(column_name + description + sample_values)` and sets `pii_tag +
-   pii_source` on the `flyquery_schema_objects` row.
+2. **Stage 8 (PII tag)** — the configured scanner classifies each column
+   using its name, description, samples, and up to 100 stored profile values.
+   It sets `pii_tag` and `pii_source` before embedding and retrieval. A value
+   after the sampled prefix can therefore still trigger redact/reject.
 
 The scanner and policy are both configurable — globally via environment
 variables or per-dataset via `ingest_policy_json`.
@@ -134,6 +135,9 @@ column name could pass the later tag stage while raw profile values reached
 the agents. The empty list is an explicit denial; a missing sample list may
 still use ordinary profile values. Original Parquet files remain unchanged,
 and this sampling policy does not remove source data or stored profiles.
+Detection is limited to the values sampled or retained by the profiler and
+the selected scanner's patterns. Values outside that coverage can be missed;
+this is not a guarantee that arbitrary source data contains no PII.
 
 ---
 
