@@ -6782,6 +6782,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[TableRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8645,6 +8652,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[TableRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8770,6 +8784,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SchemaChangeRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8804,6 +8825,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SchemaObjectRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },
@@ -8838,6 +8866,13 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SnapshotRead]"
+                }
+              }
+            },
             "description": "Successful response"
           }
         },

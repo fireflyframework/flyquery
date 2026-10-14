@@ -251,7 +251,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_changes**
-> list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedSchemaChangeRead list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
@@ -259,6 +259,7 @@ Name | Type | Description  | Notes
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_schema_change_read import PaginatedSchemaChangeRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -288,7 +289,9 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+        api_response = await api_instance.list_changes(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+        print("The response of AgentTablesApi->list_changes:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling AgentTablesApi->list_changes: %s\n" % e)
 ```
@@ -306,7 +309,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSchemaChangeRead**](PaginatedSchemaChangeRead.md)
 
 ### Authorization
 
@@ -315,7 +318,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -326,7 +329,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_objects**
-> list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedSchemaObjectRead list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
@@ -334,6 +337,7 @@ void (empty response body)
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_schema_object_read import PaginatedSchemaObjectRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -363,7 +367,9 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+        api_response = await api_instance.list_objects(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+        print("The response of AgentTablesApi->list_objects:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling AgentTablesApi->list_objects: %s\n" % e)
 ```
@@ -381,7 +387,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSchemaObjectRead**](PaginatedSchemaObjectRead.md)
 
 ### Authorization
 
@@ -390,7 +396,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -401,7 +407,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_snapshots**
-> list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedSnapshotRead list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
@@ -409,6 +415,7 @@ void (empty response body)
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_snapshot_read import PaginatedSnapshotRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -438,7 +445,9 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+        api_response = await api_instance.list_snapshots(table_id, x_agent_token, x_correlation_id=x_correlation_id)
+        print("The response of AgentTablesApi->list_snapshots:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling AgentTablesApi->list_snapshots: %s\n" % e)
 ```
@@ -456,7 +465,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSnapshotRead**](PaginatedSnapshotRead.md)
 
 ### Authorization
 
@@ -465,7 +474,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -476,7 +485,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_tables**
-> list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
+> PaginatedTableRead list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
 
 ### Example
 
@@ -484,6 +493,7 @@ void (empty response body)
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_table_read import PaginatedTableRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -513,7 +523,9 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
+        api_response = await api_instance.list_tables(dataset_id, x_agent_token, x_correlation_id=x_correlation_id)
+        print("The response of AgentTablesApi->list_tables:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling AgentTablesApi->list_tables: %s\n" % e)
 ```
@@ -531,7 +543,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -540,7 +552,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -551,7 +563,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **search_tables**
-> search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+> PaginatedTableRead search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
 
 ### Example
 
@@ -559,6 +571,7 @@ void (empty response body)
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_table_read import PaginatedTableRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -594,7 +607,9 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+        api_response = await api_instance.search_tables(x_agent_token, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+        print("The response of AgentTablesApi->search_tables:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling AgentTablesApi->search_tables: %s\n" % e)
 ```
@@ -618,7 +633,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-void (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -627,7 +642,7 @@ void (empty response body)
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 

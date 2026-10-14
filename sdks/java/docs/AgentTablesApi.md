@@ -244,7 +244,7 @@ public class Example {
 
 ## listChanges
 
-> listChanges(tableId, xAgentToken, xCorrelationId)
+> PaginatedSchemaChangeRead listChanges(tableId, xAgentToken, xCorrelationId)
 
 
 
@@ -275,7 +275,8 @@ public class Example {
         String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listChanges(tableId, xAgentToken, xCorrelationId);
+            PaginatedSchemaChangeRead result = apiInstance.listChanges(tableId, xAgentToken, xCorrelationId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentTablesApi#listChanges");
             System.err.println("Status code: " + e.getCode());
@@ -298,7 +299,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedSchemaChangeRead**](PaginatedSchemaChangeRead.md)
 
 ### Authorization
 
@@ -307,7 +308,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -318,7 +319,7 @@ null (empty response body)
 
 ## listObjects
 
-> listObjects(tableId, xAgentToken, xCorrelationId)
+> PaginatedSchemaObjectRead listObjects(tableId, xAgentToken, xCorrelationId)
 
 
 
@@ -349,7 +350,8 @@ public class Example {
         String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listObjects(tableId, xAgentToken, xCorrelationId);
+            PaginatedSchemaObjectRead result = apiInstance.listObjects(tableId, xAgentToken, xCorrelationId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentTablesApi#listObjects");
             System.err.println("Status code: " + e.getCode());
@@ -372,7 +374,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedSchemaObjectRead**](PaginatedSchemaObjectRead.md)
 
 ### Authorization
 
@@ -381,7 +383,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -392,7 +394,7 @@ null (empty response body)
 
 ## listSnapshots
 
-> listSnapshots(tableId, xAgentToken, xCorrelationId)
+> PaginatedSnapshotRead listSnapshots(tableId, xAgentToken, xCorrelationId)
 
 
 
@@ -423,7 +425,8 @@ public class Example {
         String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listSnapshots(tableId, xAgentToken, xCorrelationId);
+            PaginatedSnapshotRead result = apiInstance.listSnapshots(tableId, xAgentToken, xCorrelationId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentTablesApi#listSnapshots");
             System.err.println("Status code: " + e.getCode());
@@ -446,7 +449,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedSnapshotRead**](PaginatedSnapshotRead.md)
 
 ### Authorization
 
@@ -455,7 +458,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -466,7 +469,7 @@ null (empty response body)
 
 ## listTables
 
-> listTables(datasetId, xAgentToken, xCorrelationId)
+> PaginatedTableRead listTables(datasetId, xAgentToken, xCorrelationId)
 
 
 
@@ -497,7 +500,8 @@ public class Example {
         String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listTables(datasetId, xAgentToken, xCorrelationId);
+            PaginatedTableRead result = apiInstance.listTables(datasetId, xAgentToken, xCorrelationId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentTablesApi#listTables");
             System.err.println("Status code: " + e.getCode());
@@ -520,7 +524,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -529,7 +533,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details
@@ -540,7 +544,7 @@ null (empty response body)
 
 ## searchTables
 
-> searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId)
+> PaginatedTableRead searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId)
 
 
 
@@ -577,7 +581,8 @@ public class Example {
         Integer offset = 0; // Integer | 
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId);
+            PaginatedTableRead result = apiInstance.searchTables(xAgentToken, q, name, datasetId, kind, isActive, limit, offset, xCorrelationId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentTablesApi#searchTables");
             System.err.println("Status code: " + e.getCode());
@@ -606,7 +611,7 @@ public class Example {
 
 ### Return type
 
-null (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
@@ -615,7 +620,7 @@ null (empty response body)
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details

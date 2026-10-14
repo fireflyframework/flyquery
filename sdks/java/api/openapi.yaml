@@ -458,6 +458,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[TableRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1708,6 +1712,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[TableRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1790,6 +1798,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SchemaChangeRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1812,6 +1824,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SchemaObjectRead]"
           description: Successful response
       security:
       - AgentToken: []
@@ -1834,6 +1850,10 @@ paths:
       - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SnapshotRead]"
           description: Successful response
       security:
       - AgentToken: []

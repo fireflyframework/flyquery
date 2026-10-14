@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,7 +43,8 @@ from pyfly.web import PathVar, QueryParam, get_mapping, request_mapping
 from starlette.requests import Request
 
 from flyquery.core.services.auth.agent_token_service import AgentTokenService
-from flyquery.interfaces.files import SchemaObjectRead, TableRead
+from flyquery.interfaces.files import SchemaChangeRead, SchemaObjectRead, SnapshotRead, TableRead
+from flyquery.interfaces.pagination import Paginated
 from flyquery.web.controllers.schema_objects_controller import (
     SchemaObjectsController as _UserSchemaObjectsController,
 )
@@ -105,7 +107,7 @@ class AgentTablesController:
         self,
         http_request: Request,
         dataset_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[TableRead]:
         await self._verify(http_request)
         return await self._tables.list_tables(http_request, dataset_id)
 
@@ -124,7 +126,7 @@ class AgentTablesController:
         is_active: QueryParam[bool] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
-    ) -> dict:
+    ) -> Paginated[TableRead]:
         await self._verify(http_request)
         return await self._tables.search_tables(
             http_request,
@@ -161,7 +163,7 @@ class AgentTablesController:
         self,
         http_request: Request,
         table_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[SnapshotRead]:
         await self._verify(http_request)
         return await self._tables.list_snapshots(http_request, table_id)
 
@@ -170,7 +172,7 @@ class AgentTablesController:
         self,
         http_request: Request,
         table_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[SchemaObjectRead]:
         await self._verify(http_request)
         return await self._tables.list_objects(http_request, table_id)
 
@@ -179,7 +181,7 @@ class AgentTablesController:
         self,
         http_request: Request,
         table_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[SchemaChangeRead]:
         await self._verify(http_request)
         return await self._tables.list_changes(http_request, table_id)
 
