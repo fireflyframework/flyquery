@@ -1,4 +1,5 @@
 # Copyright 2024-2026 Firefly Software Foundation
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -155,8 +156,11 @@ class SqlExecuteController:
         await self._assert_direct_sql_enabled(workspace_id)
 
         ast = self._ast_classifier.classify(body.sql)
-        table_kinds: dict[str, str] = {}
-        dataset_of_table: dict[str, str] = {}
+        registered = await self._table_repo.list_kinds_for_dataset_by_names(
+            body.dataset_id, list(ast.table_refs)
+        )
+        table_kinds = {row["name"]: row["kind"] for row in registered}
+        dataset_of_table = {name: str(body.dataset_id) for name in table_kinds}
 
         scope_error: str | None = None
         try:
@@ -359,15 +363,19 @@ class SqlExecuteController:
         await self._assert_direct_sql_enabled(workspace_id)
 
         ast = self._ast_classifier.classify(request.sql)
+        registered = await self._table_repo.list_kinds_for_dataset_by_names(
+            request.dataset_id, list(ast.table_refs)
+        )
+        table_kinds = {row["name"]: row["kind"] for row in registered}
 
         scope_error: str | None = None
         try:
             self._scope_guard.check(
                 classification=ast,
                 scopes=_DEFAULT_SCOPES,
-                table_kinds_by_name={},
+                table_kinds_by_name=table_kinds,
                 dataset_allowlist=None,
-                dataset_of_table={},
+                dataset_of_table={name: str(request.dataset_id) for name in table_kinds},
             )
         except ScopeGuardError as exc:
             scope_error = str(exc)
