@@ -299,7 +299,7 @@ With `FLYQUERY_EDA_ADAPTER=redis` or `kafka`:
 | 5432 | Postgres | TCP | Internal only; not exposed externally |
 | 6379 | Redis | TCP | Internal only |
 
-Firefly OperationOS port conventions:
+Firefly Framework port conventions:
 - flycanon: 8500
 - flyradar: 8510
 - flyquery: 8520

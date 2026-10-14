@@ -16,7 +16,7 @@
 
 ## 1. System position
 
-flyquery is the third pillar of **Firefly OperationOS**, alongside flycanon
+flyquery is the third pillar of **Firefly Framework**, alongside flycanon
 (operational knowledge repository for unstructured content) and flyradar
 (operations-discovery and diagnostic intelligence).
 

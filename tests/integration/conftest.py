@@ -19,11 +19,16 @@ from __future__ import annotations
 import os
 import subprocess
 from collections.abc import AsyncIterator, Iterator
+from contextlib import suppress
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from docker.errors import ImageNotFound
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.image import DockerImage
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
@@ -48,8 +53,27 @@ def redis_container() -> Iterator[RedisContainer]:
 
 @pytest.fixture(scope="session")
 def minio_container() -> Iterator[MinioContainer]:
-    with MinioContainer() as m:
-        yield m
+    # Community registry images disappeared; retain a real MinIO server built
+    # from pinned upstream source instead of substituting an S3 mock.
+    prepared = os.environ.get("FLYQUERY_TEST_MINIO_IMAGE")
+    if prepared:
+        with MinioContainer(image=prepared) as m:
+            yield m
+        return
+    image = DockerImage(
+        path=Path(__file__).parent / "minio",
+        tag=f"flyquery-integration-minio:{uuid4().hex}",
+        clean_up=False,
+    )
+    try:
+        image.build()
+        with MinioContainer(image=str(image)) as m:
+            yield m
+    finally:
+        # Delete only this fixture's tag and preserve cached parent layers.
+        with suppress(ImageNotFound):
+            image.get_docker_client().client.images.remove(str(image), force=False, noprune=True)
+        image.remove()
 
 
 # ---------------------------------------------------------------------------

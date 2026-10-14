@@ -1,17 +1,17 @@
 openapi: 3.1.0
 info:
   contact:
-    name: Firefly OperationOS
-    url: https://github.com/firefly-operationOS/flyquery
+    name: Firefly Framework
+    url: https://github.com/fireflyframework/flyquery
   description: Operational Structured-Data Intelligence (upload-driven) -- multi-tenant
     ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX
     / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2
     variants). Materialises uploads to Parquet on object storage; indexes a long-lived
     schema knowledge base; answers natural-language questions via a multi-agent pipeline.
-    Part of Firefly OperationOS.
+    Part of Firefly Framework.
   license:
     name: Apache-2.0
-    url: https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE
+    url: https://github.com/fireflyframework/flyquery/blob/main/LICENSE
   title: flyquery
   version: 26.6.0
 servers:

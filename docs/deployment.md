@@ -451,3 +451,8 @@ The 30-day tombstone window on workspace purge allows accidental purge
 recovery. During the tombstone window, the workspace is soft-deleted (not
 queryable) but bytes are intact. Contact support to reverse a tombstone before
 the 30-day window expires.
+
+## Repository and package namespaces
+
+See [branding.md](branding.md#package-registries) for the canonical source
+URLs and the publication checks required before using the new package namespace.

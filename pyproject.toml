@@ -2,7 +2,7 @@
 name = "flyquery"
 # CalVer YY.MM.PP per memory `firefly_uses_calver`.
 version = "26.6.0"
-description = "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files. Part of Firefly OperationOS."
+description = "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files. Part of Firefly Framework."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 # Released under the Apache License 2.0 -- see the LICENSE file. The SDKs

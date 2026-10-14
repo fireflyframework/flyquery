@@ -6,12 +6,12 @@
     <packaging>jar</packaging>
     <name>flyquery-sdk</name>
     <version>26.6.0</version>
-    <url>https://github.com/firefly-operationOS/flyquery</url>
+    <url>https://github.com/fireflyframework/flyquery</url>
     <description>Java SDK for flyquery -- Operational Structured-Data Intelligence. Auto-generated from the flyquery OpenAPI 3.1 spec. Targets Java 25 + Spring Boot 3.5.9 + WebFlux.</description>
     <scm>
-        <connection>scm:git:git@github.com:firefly-operationOS/flyquery.git</connection>
-        <developerConnection>scm:git:git@github.com:firefly-operationOS/flyquery.git</developerConnection>
-        <url>https://github.com/firefly-operationOS/flyquery</url>
+        <connection>scm:git:git@github.com:fireflyframework/flyquery.git</connection>
+        <developerConnection>scm:git:git@github.com:fireflyframework/flyquery.git</developerConnection>
+        <url>https://github.com/fireflyframework/flyquery</url>
     </scm>
 
     <licenses>
@@ -27,7 +27,7 @@
             <name>Firefly Software Foundation</name>
             <email>opensource@firefly.com</email>
             <organization>Firefly Software Foundation</organization>
-            <organizationUrl>https://github.com/firefly-operationOS</organizationUrl>
+            <organizationUrl>https://github.com/fireflyframework</organizationUrl>
         </developer>
     </developers>
 
@@ -148,8 +148,8 @@
     <distributionManagement>
         <repository>
             <id>github</id>
-            <name>GitHub Packages -- firefly-operationOS/flyquery</name>
-            <url>https://maven.pkg.github.com/firefly-operationOS/flyquery</url>
+            <name>GitHub Packages -- fireflyframework/flyquery</name>
+            <url>https://maven.pkg.github.com/fireflyframework/flyquery</url>
         </repository>
     </distributionManagement>
 </project>

@@ -16,7 +16,7 @@ pyfly:
     description: >-
       Operational Structured-Data Intelligence (upload-driven).
       Multi-tenant ingestion + Text-to-SQL over user-uploaded structured
-      files. Part of Firefly OperationOS.
+      files. Part of Firefly Framework.
 
   web:
     enabled: true

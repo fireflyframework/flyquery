@@ -12,13 +12,13 @@
 #       - workflow_dispatch                  -> manual re-publish
 #
 #   * Java SDK -> ``mvn deploy`` to GitHub Packages at
-#                  https://maven.pkg.github.com/firefly-operationOS/flyquery
+#                  https://maven.pkg.github.com/fireflyframework/flyquery
 #
 #   * Python SDK -> build sdist + wheel with ``uv build`` and attach
 #                  both to the GitHub Release. We do NOT publish to
 #                  PyPI -- users install directly from the release URL:
 #
-#                      uv add https://github.com/firefly-operationOS/flyquery/releases/download/v26.05.04/flyquery_sdk-26.5.4-py3-none-any.whl
+#                      uv add https://github.com/fireflyframework/flyquery/releases/download/v26.05.04/flyquery_sdk-26.5.4-py3-none-any.whl
 #
 # Docs-only commits do not trigger this workflow (tags only).
 
@@ -90,7 +90,7 @@ jobs:
           # pre-check the .pom URL with a HEAD; a 200 means the version
           # is already on Packages and we treat this run as a success.
           VERSION=$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)
-          URL="https://maven.pkg.github.com/firefly-operationOS/flyquery/com/firefly/flyquery-sdk/${VERSION}/flyquery-sdk-${VERSION}.pom"
+          URL="https://maven.pkg.github.com/fireflyframework/flyquery/com/firefly/flyquery-sdk/${VERSION}/flyquery-sdk-${VERSION}.pom"
           code=$(curl -s -o /dev/null -w "%{http_code}" -u "${GITHUB_ACTOR}:${GITHUB_TOKEN}" -I "$URL")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
@@ -122,7 +122,7 @@ jobs:
             echo "### Published Java SDK"
             echo
             echo "**Coordinates**: \`com.firefly:flyquery-sdk:$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)\`"
-            echo "**Repository**: https://maven.pkg.github.com/firefly-operationOS/flyquery"
+            echo "**Repository**: https://maven.pkg.github.com/fireflyframework/flyquery"
             echo
             echo "Add to your \`pom.xml\`:"
             echo '```xml'
