@@ -228,3 +228,40 @@ async def test_unregistered_loopback_url_is_denied_without_an_http_request() -> 
             worker.join()
     assert isinstance(result, ExecutionError)
     assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_correlated_exists_preserves_registered_parquet_authority(tmp_path: Path) -> None:
+    file = tmp_path / "orders.parquet"
+    pq.write_table(pa.Table.from_pylist([{"id": 1, "total": 25}]), file)
+    sql = "SELECT total FROM orders WHERE EXISTS (SELECT 1 FROM orders p WHERE p.id=orders.id)"
+    result = await DuckDBExecutor(Settings()).execute(sql, {"orders": str(file)})
+    assert isinstance(result, ExecutionResult)
+    assert result.rows == [{"total": 25}]
+    ast = AstClassifier().classify(sql)
+    assert ast.table_refs == ("orders",)
+    assert not ast.unsupported_sql
+    check(sql, {"orders": "UPLOADED"}, {"owned"}, {"orders": "owned"})
+    with pytest.raises(ScopeGuardError):
+        check(sql, {"orders": "UPLOADED"}, {"other"}, {"orders": "owned"})
+
+
+@pytest.mark.parametrize("nested_source", ["read_csv_auto", "unregistered"])
+@pytest.mark.asyncio
+async def test_exists_does_not_admit_nested_unregistered_sources(tmp_path: Path, nested_source: str) -> None:
+    file = tmp_path / "orders.parquet"
+    pq.write_table(pa.Table.from_pylist([{"id": 1, "total": 25}]), file)
+    unregistered = tmp_path / "unregistered.csv"
+    unregistered.write_text("id\n1\n")
+    source = f"read_csv_auto('{unregistered}')" if nested_source == "read_csv_auto" else nested_source
+    sql = f"SELECT total FROM orders WHERE EXISTS (SELECT 1 FROM {source} p WHERE p.id=orders.id)"
+    ast = AstClassifier().classify(sql)
+    if nested_source == "read_csv_auto":
+        assert ast.unsupported_sql
+    else:
+        assert not ast.unsupported_sql
+        assert ast.table_refs == ("orders", "unregistered")
+    with pytest.raises(ScopeGuardError):
+        check(sql, {"orders": "UPLOADED"}, {"owned"}, {"orders": "owned"})
+    result = await DuckDBExecutor(Settings()).execute(sql, {"orders": str(file)})
+    assert isinstance(result, ExecutionError)

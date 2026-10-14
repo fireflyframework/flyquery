@@ -56,6 +56,7 @@ _PURE_FUNCTIONS = frozenset(
         "TRY_CAST",
         "CASE",
         "IF",
+        "EXISTS",
         "DATE_TRUNC",
         "TIMESTAMP_TRUNC",
         "DATE_DIFF",
