@@ -43,6 +43,13 @@ token's permissions constrain the operation. Adding an agent-token header to a
 user-route helper does not change which route it calls. The
 [security model](security-model.md) explains token issuance and permissions.
 
+Table reads report a current snapshot only when it belongs to the same table,
+dataset, tenant and workspace. If the retained pointer is missing or does not
+resolve within that scope, `current_snapshot_id` and `n_columns` are `null`.
+This means the current snapshot is unavailable through this read; it does not
+repair the stored pointer or establish that no snapshot exists. A valid snapshot
+with zero columns still reports its ID and `n_columns: 0`.
+
 Lookup-or-create helpers fall back to creation only after a 404. Other errors
 propagate, and a concurrent creator can return a 409. For mutating operations,
 use the API's idempotency-key mechanism where appropriate.

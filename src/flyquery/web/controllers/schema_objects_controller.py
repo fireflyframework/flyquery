@@ -54,7 +54,9 @@ class SchemaObjectsController:
     ) -> SchemaObjectRead:
         """Get a single schema object by ID."""
         ctx = tenant_context_from_request(http_request)
-        row = await self._service.get(object_id, tenant_id=ctx.tenant_id)
+        row = await self._service.get(
+            object_id, tenant_id=ctx.tenant_id, workspace_id=uuid.UUID(ctx.workspace_id)
+        )
         if row is None:
             raise ResourceNotFound(f"schema object {object_id!r} not found")
         return _row_to_read(row)

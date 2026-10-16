@@ -52,16 +52,22 @@ class SchemaObjectRepository:
         object_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> dict[str, Any] | None:
-        """Fetch a single schema object by id within a tenant.
+        """Fetch a single schema object within its tenant and workspace.
 
         Tenant filter is required so RLS is honoured even from
         BYPASSRLS roles (the ingestion worker can be that role).
         """
         async with self._factory() as s:
             result = await s.execute(
-                sa.text("SELECT * FROM flyquery_schema_objects WHERE id = :oid AND tenant_id = :tenant"),
-                {"oid": object_id, "tenant": tenant_id},
+                sa.text(
+                    "SELECT so.* FROM flyquery_schema_objects so "
+                    "JOIN flyquery_tables t ON t.id = so.table_id "
+                    "WHERE so.id = :oid AND so.tenant_id = :tenant AND so.workspace_id = :workspace "
+                    "AND t.tenant_id = :tenant AND t.workspace_id = :workspace"
+                ),
+                {"oid": object_id, "tenant": tenant_id, "workspace": workspace_id},
             )
             row = result.mappings().one_or_none()
             return dict(row) if row else None

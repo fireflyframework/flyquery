@@ -49,15 +49,18 @@ class SchemaSnapshotRepository:
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
         async with self._factory() as s:
             result = await s.execute(
                 sa.text(
-                    "SELECT * FROM flyquery_schema_snapshots "
-                    "WHERE table_id = :tid AND tenant_id = :tenant "
-                    "ORDER BY taken_at"
+                    "SELECT ss.* FROM flyquery_schema_snapshots ss "
+                    "JOIN flyquery_tables t ON t.id = ss.table_id "
+                    "WHERE t.id = :tid AND t.tenant_id = :tenant AND t.workspace_id = :workspace "
+                    "AND ss.tenant_id = :tenant AND ss.workspace_id = :workspace "
+                    "ORDER BY ss.taken_at"
                 ),
-                {"tid": table_id, "tenant": tenant_id},
+                {"tid": table_id, "tenant": tenant_id, "workspace": workspace_id},
             )
             return [dict(r) for r in result.mappings().all()]
 
@@ -66,6 +69,7 @@ class SchemaSnapshotRepository:
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
         """List schema_objects bound to the table's *current* snapshot.
 
@@ -78,13 +82,14 @@ class SchemaSnapshotRepository:
                     """
                     SELECT so.*
                     FROM flyquery_schema_objects so
-                    JOIN flyquery_tables t ON t.current_snapshot_id = so.snapshot_id
+                    JOIN flyquery_tables t ON t.current_snapshot_id = so.snapshot_id AND t.id = so.table_id
                     WHERE t.id = :tid AND t.tenant_id = :tenant
-                      AND so.tenant_id = :tenant
+                      AND t.workspace_id = :workspace
+                      AND so.tenant_id = :tenant AND so.workspace_id = :workspace
                     ORDER BY so.kind DESC, so.qualified_name
                     """
                 ),
-                {"tid": table_id, "tenant": tenant_id},
+                {"tid": table_id, "tenant": tenant_id, "workspace": workspace_id},
             )
             return [dict(r) for r in result.mappings().all()]
 
@@ -93,15 +98,18 @@ class SchemaSnapshotRepository:
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
         async with self._factory() as s:
             result = await s.execute(
                 sa.text(
-                    "SELECT * FROM flyquery_schema_changes "
-                    "WHERE table_id = :tid AND tenant_id = :tenant "
-                    "ORDER BY created_at"
+                    "SELECT sc.* FROM flyquery_schema_changes sc "
+                    "JOIN flyquery_tables t ON t.id = sc.table_id "
+                    "WHERE t.id = :tid AND t.tenant_id = :tenant AND t.workspace_id = :workspace "
+                    "AND sc.tenant_id = :tenant AND sc.workspace_id = :workspace "
+                    "ORDER BY sc.created_at"
                 ),
-                {"tid": table_id, "tenant": tenant_id},
+                {"tid": table_id, "tenant": tenant_id, "workspace": workspace_id},
             )
             return [dict(r) for r in result.mappings().all()]
 

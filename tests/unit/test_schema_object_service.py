@@ -30,11 +30,15 @@ from flyquery.interfaces.files import SchemaObjectUpdate
 class _CapturingRepo:
     def __init__(self) -> None:
         self.last_get: tuple[uuid.UUID, str] | None = None
+        self.last_workspace: uuid.UUID | None = None
         self.last_update: dict[str, Any] | None = None
         self.row: dict[str, Any] | None = None
 
-    async def get(self, object_id: uuid.UUID, *, tenant_id: str) -> dict[str, Any] | None:
+    async def get(
+        self, object_id: uuid.UUID, *, tenant_id: str, workspace_id: uuid.UUID
+    ) -> dict[str, Any] | None:
         self.last_get = (object_id, tenant_id)
+        self.last_workspace = workspace_id
         return self.row
 
     async def update(
@@ -54,9 +58,11 @@ async def test_get_forwards_to_repo() -> None:
     repo.row = {"id": uuid.uuid4()}
     svc = SchemaObjectService(repo)  # type: ignore[arg-type]
     oid = uuid.uuid4()
-    out = await svc.get(oid, tenant_id="acme")
+    workspace = uuid.uuid4()
+    out = await svc.get(oid, tenant_id="acme", workspace_id=workspace)
     assert out is repo.row
     assert repo.last_get == (oid, "acme")
+    assert repo.last_workspace == workspace
 
 
 @pytest.mark.asyncio

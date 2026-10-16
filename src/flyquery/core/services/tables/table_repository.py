@@ -22,7 +22,7 @@ snapshots through their own SQL). Surfaces the queries the
   ``is_active=true``, JOIN-enriched with snapshot column count.
 * :meth:`search`            -- workspace-scoped search with q / name /
   kind / dataset / is_active filters and ``(rows, total)`` semantics.
-* :meth:`get`               -- single fetch by id, tenant-scoped.
+* :meth:`get`               -- single fetch by id, tenant/workspace-scoped.
 * :meth:`get_by_name`       -- resolve by ``(workspace, name [, dataset])``.
 
 All reads carry the snapshot ``n_columns`` so the controller can
@@ -39,6 +39,13 @@ from pyfly.container import repository
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
+def _read_row(row: Any) -> dict[str, Any]:
+    data = dict(row)
+    # The retained pointer alone does not prove that the snapshot is in this scope.
+    data["current_snapshot_id"] = data.pop("_scoped_snapshot_id")
+    return data
+
+
 @repository
 class TableRepository:
     """Repository over ``flyquery_tables`` + the snapshot join."""
@@ -51,25 +58,31 @@ class TableRepository:
         dataset_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
         async with self._factory() as s:
             result = await s.execute(
                 sa.text(
                     """
                     SELECT t.*,
-                           ss.n_columns
+                           ss.n_columns, ss.id AS _scoped_snapshot_id
                     FROM flyquery_tables t
                     LEFT JOIN flyquery_schema_snapshots ss
                         ON ss.id = t.current_snapshot_id
+                       AND ss.table_id = t.id
+                       AND ss.tenant_id = t.tenant_id
+                       AND ss.workspace_id = t.workspace_id
+                       AND ss.dataset_id = t.dataset_id
                     WHERE t.dataset_id = :ds_id
                       AND t.tenant_id = :tenant
+                      AND t.workspace_id = :workspace
                       AND t.is_active = true
                     ORDER BY t.created_at
                     """
                 ),
-                {"ds_id": dataset_id, "tenant": tenant_id},
+                {"ds_id": dataset_id, "tenant": tenant_id, "workspace": workspace_id},
             )
-            return [dict(r) for r in result.mappings().all()]
+            return [_read_row(r) for r in result.mappings().all()]
 
     async def search(
         self,
@@ -104,11 +117,15 @@ class TableRepository:
                 sa.text(
                     """
                     SELECT t.*,
-                           ss.n_columns,
+                           ss.n_columns, ss.id AS _scoped_snapshot_id,
                            COUNT(*) OVER () AS _total
                     FROM flyquery_tables t
                     LEFT JOIN flyquery_schema_snapshots ss
                         ON ss.id = t.current_snapshot_id
+                       AND ss.table_id = t.id
+                       AND ss.tenant_id = t.tenant_id
+                       AND ss.workspace_id = t.workspace_id
+                       AND ss.dataset_id = t.dataset_id
                     WHERE t.tenant_id = :tenant
                       AND t.workspace_id = :workspace
                       AND t.is_active = :active
@@ -124,7 +141,7 @@ class TableRepository:
                 ),
                 params,
             )
-            rows = [dict(r) for r in result.mappings().all()]
+            rows = [_read_row(r) for r in result.mappings().all()]
         if rows:
             total = int(rows[0].pop("_total"))
             for r in rows[1:]:
@@ -159,23 +176,29 @@ class TableRepository:
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> dict[str, Any] | None:
         async with self._factory() as s:
             result = await s.execute(
                 sa.text(
                     """
                     SELECT t.*,
-                           ss.n_columns
+                           ss.n_columns, ss.id AS _scoped_snapshot_id
                     FROM flyquery_tables t
                     LEFT JOIN flyquery_schema_snapshots ss
                         ON ss.id = t.current_snapshot_id
+                       AND ss.table_id = t.id
+                       AND ss.tenant_id = t.tenant_id
+                       AND ss.workspace_id = t.workspace_id
+                       AND ss.dataset_id = t.dataset_id
                     WHERE t.id = :tid AND t.tenant_id = :tenant
+                      AND t.workspace_id = :workspace
                     """
                 ),
-                {"tid": table_id, "tenant": tenant_id},
+                {"tid": table_id, "tenant": tenant_id, "workspace": workspace_id},
             )
             row = result.mappings().one_or_none()
-            return dict(row) if row else None
+            return _read_row(row) if row else None
 
     async def list_kinds_for_dataset_by_names(
         self,
@@ -225,10 +248,14 @@ class TableRepository:
             result = await s.execute(
                 sa.text(
                     """
-                    SELECT t.*, ss.n_columns
+                    SELECT t.*, ss.n_columns, ss.id AS _scoped_snapshot_id
                     FROM flyquery_tables t
                     LEFT JOIN flyquery_schema_snapshots ss
                         ON ss.id = t.current_snapshot_id
+                       AND ss.table_id = t.id
+                       AND ss.tenant_id = t.tenant_id
+                       AND ss.workspace_id = t.workspace_id
+                       AND ss.dataset_id = t.dataset_id
                     WHERE t.tenant_id = :tenant
                       AND t.workspace_id = :workspace
                       AND t.name = :name
@@ -244,4 +271,4 @@ class TableRepository:
                     "ds_id": dataset_id,
                 },
             )
-            return [dict(r) for r in result.mappings().all()]
+            return [_read_row(r) for r in result.mappings().all()]
