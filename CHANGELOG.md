@@ -5,6 +5,37 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.10.4] - Unreleased
+
+### Fixed
+
+- Confine table, snapshot, change and schema-object reads to the requested
+  tenant and workspace, including the parent table's scope. Report a current
+  snapshot only when its table, dataset, tenant and workspace match; an
+  unresolved pointer returns unavailable metadata without changing stored data.
+
+### Added
+
+- Add the Python `AgentReadClient` for bounded GET-only dataset, table catalog,
+  exact table and schema-object reads. It uses agent routes and a fixed
+  tenant/workspace/dataset, validates returned scope and parent snapshot, and
+  refuses mixed, oversized or declared incomplete catalogs. Its default pool
+  allows four connections and two keepalive connections. Redirects, automatic
+  retries and environment proxies are disabled independently.
+- Include the existing Apache license in the Java binary and source JARs. An
+  existing NOTICE file is included when present; this source has no NOTICE file.
+
+### Qualification scope
+
+- Source-host cohorts passed 72 server controls and 70 SDK controls. These are
+  separate focused cohorts, not a complete current integration suite. The SQL
+  fixture is prepared; native PostgreSQL, RLS, ASGI and installed SDK acceptance
+  remain pending. The retained SDK environment lacks third-party dateutil stubs
+  for the broad type check; focused changed-file type checks pass.
+- REST DTOs, query execution, existing SDK clients and dependency pins are
+  unchanged. The Forge adapter and agent GET mirror for prepared query results
+  are separate pending work. This candidate has not been published.
+
 ## [26.10.3] - 2026-10-14
 
 ### Fixed

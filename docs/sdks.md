@@ -24,9 +24,10 @@ that a package with the same name on PyPI is maintained by this project:
 uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.3/flyquery_sdk-26.10.3-py3-none-any.whl
 ```
 
-Keep service and client versions aligned. This release uses version `26.10.3`;
-read the release notes and API snapshot before upgrading. The repository also
-retains earlier releases and their original assets.
+Keep service and client versions aligned. The published release above is
+`26.10.3`; this source prepares `26.10.4`, whose publication and native acceptance
+are pending. Read the release notes and API snapshot before upgrading. The
+repository retains earlier releases and their original assets.
 
 ## Scope and authentication
 
@@ -56,13 +57,13 @@ use the API's idempotency-key mechanism where appropriate.
 
 ## Operations
 
-### Bounded agent reads in development source
+### Bounded agent reads in candidate 26.10.4
 
 `flyquery_sdk.agent_read_client.AgentReadClient` provides four GET-only methods:
 `get_dataset()`, `list_tables()`, `get_table(table_id)` and
 `get_object(table_id, object_id)`. This addition is not in the published 26.10.3
-SDK. Use its qualified source with a compatible service until a later release
-includes it.
+SDK. Use the qualified 26.10.4 candidate source with a compatible service until
+its release is published.
 
 The client fixes one tenant, workspace and dataset at construction. Supply an
 issued agent token with `flyquery.datasets:read` and `flyquery.schema:read` as

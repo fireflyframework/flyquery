@@ -35,11 +35,11 @@ release notes before changing either version.
 
 ## Connect to an existing workspace
 
-For a bounded read-only agent integration, development source also contains
+For a bounded read-only agent integration, candidate 26.10.4 source also contains
 `AgentReadClient`; it is not included in the published 26.10.3 wheel above.
 It fixes a tenant/workspace/dataset scope and uses only the agent-token GET
 routes. Its complete scope and bounds are described in the
-[SDK guide](../../docs/sdks.md#bounded-agent-reads-in-development-source).
+[SDK guide](../../docs/sdks.md#bounded-agent-reads-in-candidate-26104).
 
 ```python
 import os
