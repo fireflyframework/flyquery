@@ -18,7 +18,9 @@ default headers.
 
 ## Install
 
-For release 26.10.3, use the matching Maven coordinate:
+The current published release is 26.10.3. Candidate source prepares 26.10.4;
+its native acceptance and publication are pending. For the published release,
+use the matching Maven coordinate:
 
 ```xml
 <dependency>

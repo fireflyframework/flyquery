@@ -69,7 +69,9 @@ class TablesController:
         dataset_id: PathVar[uuid.UUID],
     ) -> Paginated[TableRead]:
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_for_dataset(dataset_id, tenant_id=ctx.tenant_id)
+        rows = await self._service.list_for_dataset(
+            dataset_id, tenant_id=ctx.tenant_id, workspace_id=uuid.UUID(ctx.workspace_id)
+        )
         items = [_table_row_to_read(r) for r in rows]
         return Paginated.of(items, total=len(items))
 
@@ -173,7 +175,9 @@ class TablesController:
         table_id: PathVar[uuid.UUID],
     ) -> TableRead:
         ctx = tenant_context_from_request(http_request)
-        row = await self._service.get(table_id, tenant_id=ctx.tenant_id)
+        row = await self._service.get(
+            table_id, tenant_id=ctx.tenant_id, workspace_id=uuid.UUID(ctx.workspace_id)
+        )
         if row is None:
             raise ResourceNotFound(f"table {table_id!r} not found")
         return _table_row_to_read(row)
@@ -189,7 +193,9 @@ class TablesController:
         table_id: PathVar[uuid.UUID],
     ) -> Paginated[SnapshotRead]:
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_snapshots(table_id, tenant_id=ctx.tenant_id)
+        rows = await self._service.list_snapshots(
+            table_id, tenant_id=ctx.tenant_id, workspace_id=uuid.UUID(ctx.workspace_id)
+        )
         items = [_snapshot_row_to_read(r) for r in rows]
         return Paginated.of(items, total=len(items))
 
@@ -205,7 +211,9 @@ class TablesController:
     ) -> Paginated[SchemaObjectRead]:
         """List schema_objects for the table's current snapshot."""
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_objects(table_id, tenant_id=ctx.tenant_id)
+        rows = await self._service.list_objects(
+            table_id, tenant_id=ctx.tenant_id, workspace_id=uuid.UUID(ctx.workspace_id)
+        )
         items = [_object_row_to_read(r) for r in rows]
         return Paginated.of(items, total=len(items))
 
@@ -220,7 +228,9 @@ class TablesController:
         table_id: PathVar[uuid.UUID],
     ) -> Paginated[SchemaChangeRead]:
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_changes(table_id, tenant_id=ctx.tenant_id)
+        rows = await self._service.list_changes(
+            table_id, tenant_id=ctx.tenant_id, workspace_id=uuid.UUID(ctx.workspace_id)
+        )
         items = [_change_row_to_read(r) for r in rows]
         return Paginated.of(items, total=len(items))
 

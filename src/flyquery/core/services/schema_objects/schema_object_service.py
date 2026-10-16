@@ -52,8 +52,9 @@ class SchemaObjectService:
         object_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> dict[str, Any] | None:
-        return await self._repo.get(object_id, tenant_id=tenant_id)
+        return await self._repo.get(object_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def update(
         self,

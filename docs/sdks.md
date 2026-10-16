@@ -24,9 +24,10 @@ that a package with the same name on PyPI is maintained by this project:
 uv add https://github.com/fireflyframework/flyquery/releases/download/v26.10.3/flyquery_sdk-26.10.3-py3-none-any.whl
 ```
 
-Keep service and client versions aligned. This release uses version `26.10.3`;
-read the release notes and API snapshot before upgrading. The repository also
-retains earlier releases and their original assets.
+Keep service and client versions aligned. The published release above is
+`26.10.3`; this source prepares `26.10.4`, whose publication and native acceptance
+are pending. Read the release notes and API snapshot before upgrading. The
+repository retains earlier releases and their original assets.
 
 ## Scope and authentication
 
@@ -43,11 +44,53 @@ token's permissions constrain the operation. Adding an agent-token header to a
 user-route helper does not change which route it calls. The
 [security model](security-model.md) explains token issuance and permissions.
 
+Table reads report a current snapshot only when it belongs to the same table,
+dataset, tenant and workspace. If the retained pointer is missing or does not
+resolve within that scope, `current_snapshot_id` and `n_columns` are `null`.
+This means the current snapshot is unavailable through this read; it does not
+repair the stored pointer or establish that no snapshot exists. A valid snapshot
+with zero columns still reports its ID and `n_columns: 0`.
+
 Lookup-or-create helpers fall back to creation only after a 404. Other errors
 propagate, and a concurrent creator can return a 409. For mutating operations,
 use the API's idempotency-key mechanism where appropriate.
 
 ## Operations
+
+### Bounded agent reads in candidate 26.10.4
+
+`flyquery_sdk.agent_read_client.AgentReadClient` provides four GET-only methods:
+`get_dataset()`, `list_tables()`, `get_table(table_id)` and
+`get_object(table_id, object_id)`. This addition is not in the published 26.10.3
+SDK. Use the qualified 26.10.4 candidate source with a compatible service until
+its release is published.
+
+The client fixes one tenant, workspace and dataset at construction. Supply an
+issued agent token with `flyquery.datasets:read` and `flyquery.schema:read` as
+needed. The methods call only `/api/v1/agent/*`; there is no user-tier credential
+fallback. Every returned record must match the configured scope. An object also
+must match its requested parent table and the snapshot observed in that parent
+read. Missing or mismatched scope refuses the whole response, including a mixed
+catalog page.
+
+HTTPS, no redirects, no retries and no environment proxies apply independently.
+The default operation deadline is 10 seconds, including both GETs for an object;
+the maximum configurable deadline is 30 seconds. Responses default to 256 KiB,
+with an upper bound of 1 MiB, and catalogs allow at most 100 items. A larger
+catalog is refused rather than silently truncated. The catalog route is a full
+list: declared `has_more: true`, a nonzero offset, or a total different from the
+item count refuses the response. Missing or null pagination metadata is accepted
+for compatibility with the full-list endpoint. The default transport pool allows
+at most four connections and two idle keepalive connections. Errors and 404 never trigger
+a write, a new query or another provider. Returned content containing this
+client's agent token is refused without reflecting it in the exception.
+
+These records are reported observations, not an atomic snapshot across GETs or
+an authorization guarantee beyond the service's actual token checks. Snapshot
+history DTOs omit some scope fields; this client does not expose that history.
+Agent GET routes for prepared query results do not exist yet, so this client
+offers no query-result, natural-language, SQL, upload, export or execution method.
+The existing `FlyqueryClient` and generated APIs keep their current contracts.
 
 | Operation | Python entry point |
 |---|---|

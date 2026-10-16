@@ -5,7 +5,7 @@
     <artifactId>flyquery-sdk</artifactId>
     <packaging>jar</packaging>
     <name>flyquery-sdk</name>
-    <version>26.10.3</version>
+    <version>26.10.4</version>
     <url>https://github.com/fireflyframework/flyquery</url>
     <description>Java SDK for flyquery -- Operational Structured-Data Intelligence. Auto-generated from the flyquery OpenAPI 3.1 spec. Targets Java 25 + Spring Boot 3.5.9 + WebFlux.</description>
     <scm>
@@ -32,6 +32,20 @@
     </developers>
 
     <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <targetPath>META-INF</targetPath>
+                <filtering>false</filtering>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>NOTICE</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

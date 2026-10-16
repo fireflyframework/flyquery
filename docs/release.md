@@ -32,17 +32,20 @@ The tag push fans out to two workflows:
 
 ### 1. Version sync
 
-Every artifact must read the same CalVer string. The five places
-that hold a version literal:
+Every candidate artifact must read the same CalVer string. Version-bearing
+surfaces include:
 
 | File | Pattern |
 |---|---|
-| `pyproject.toml` | `version = "26.5.10"` |
-| `pyfly.yaml` | `pyfly.app.version: 26.5.10` |
-| `sdks/python/pyproject.toml` | `version = "26.5.10"` |
-| `sdks/java/pom.xml` | `<version>26.5.10</version>` |
-| `Taskfile.yml` | `packageVersion=26.5.10` + `artifactVersion=26.5.10` (two occurrences) |
-| `README.md` | `version-26.5.10-green` badge URL |
+| `pyproject.toml`, `src/flyquery/__init__.py`, `pyfly.yaml` | Server package, runtime and actuator version |
+| `uv.lock` | Editable `flyquery` package version; preserve the remaining graph |
+| `openapi.json`, `sdks/java/api/openapi.yaml` | `info.version`; preserve protocol shapes |
+| `sdks/python/pyproject.toml`, `setup.py`, SDK `__init__.py` | Python package version |
+| Python SDK `api_client.py`, `configuration.py` | Runtime user agent and diagnostic versions |
+| `sdks/java/pom.xml`, `build.gradle` | Java artifact version |
+| `Taskfile.yml` | Python `packageVersion` and Java `artifactVersion` |
+| Generated Python/Java source headers | OpenAPI document version |
+| `README.md` | Version badge |
 
 Note: `publish-sdks.yaml` *also* rewrites the SDK versions from the
 git tag at publish time, so a forgotten local bump will not produce

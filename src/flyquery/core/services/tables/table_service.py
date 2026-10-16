@@ -60,8 +60,9 @@ class TableService:
         dataset_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
-        return await self._tables.list_for_dataset(dataset_id, tenant_id=tenant_id)
+        return await self._tables.list_for_dataset(dataset_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def search(
         self,
@@ -94,8 +95,9 @@ class TableService:
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> dict[str, Any] | None:
-        return await self._tables.get(table_id, tenant_id=tenant_id)
+        return await self._tables.get(table_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def find_by_name(
         self,
@@ -132,21 +134,28 @@ class TableService:
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
-        return await self._snapshots.list_for_table(table_id, tenant_id=tenant_id)
+        return await self._snapshots.list_for_table(table_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def list_objects(
         self,
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
-        return await self._snapshots.list_objects_for_current_snapshot(table_id, tenant_id=tenant_id)
+        return await self._snapshots.list_objects_for_current_snapshot(
+            table_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
 
     async def list_changes(
         self,
         table_id: uuid.UUID,
         *,
         tenant_id: str,
+        workspace_id: uuid.UUID,
     ) -> list[dict[str, Any]]:
-        return await self._snapshots.list_changes_for_table(table_id, tenant_id=tenant_id)
+        return await self._snapshots.list_changes_for_table(
+            table_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
