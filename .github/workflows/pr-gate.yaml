@@ -177,8 +177,8 @@ jobs:
           uv pip install --editable ".[dev]"
       - name: Check handwritten SDK code
         run: |
-          uv run ruff check flyquery_sdk/client.py tests examples
-          uv run ruff format --check flyquery_sdk/client.py tests examples
+          uv run ruff check flyquery_sdk/client.py flyquery_sdk/agent_read_client.py tests examples
+          uv run ruff format --check flyquery_sdk/client.py flyquery_sdk/agent_read_client.py tests examples
       - name: Test SDK imports and HTTP contract
         run: |
           uv run mypy flyquery_sdk tests

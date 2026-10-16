@@ -35,6 +35,31 @@ release notes before changing either version.
 
 ## Connect to an existing workspace
 
+For a bounded read-only agent integration, development source also contains
+`AgentReadClient`; it is not included in the published 26.10.3 wheel above.
+It fixes a tenant/workspace/dataset scope and uses only the agent-token GET
+routes. Its complete scope and bounds are described in the
+[SDK guide](../../docs/sdks.md#bounded-agent-reads-in-development-source).
+
+```python
+import os
+
+from flyquery_sdk.agent_read_client import AgentReadClient
+
+
+async def inspect_registered_tables() -> None:
+    async with AgentReadClient(
+        base_url=os.environ["FLYQUERY_URL"],
+        tenant_id=os.environ["FLYQUERY_TENANT_ID"],
+        workspace_id=os.environ["FLYQUERY_WORKSPACE_ID"],
+        dataset_id=os.environ["FLYQUERY_DATASET_ID"],
+        agent_token=os.environ["FLYQUERY_AGENT_TOKEN"],
+    ) as client:
+        page = await client.list_tables()
+        for table in page.items:
+            print(table.name)
+```
+
 Import the convenience client from `flyquery_sdk.client`. Supply the tenant
 identifier and the workspace UUID assigned by your service administrator.
 Dataset IDs are UUIDs too; names and slugs are used for lookup.

@@ -185,8 +185,8 @@ jobs:
         run: |
           uv venv
           uv pip install --editable ".[dev]"
-          uv run ruff check flyquery_sdk/client.py tests examples
-          uv run ruff format --check flyquery_sdk/client.py tests examples
+          uv run ruff check flyquery_sdk/client.py flyquery_sdk/agent_read_client.py tests examples
+          uv run ruff format --check flyquery_sdk/client.py flyquery_sdk/agent_read_client.py tests examples
           uv run mypy flyquery_sdk tests
           uv run pytest -q tests
 
